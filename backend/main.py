@@ -187,22 +187,39 @@ def sample(province: str, lon: float, lat: float):
         roi = get_roi(province)
         pt = ee.Geometry.Point([lon, lat])
 
-        # ✅ roi.contains() returns an EE ComputedObject — must call .getInfo() to get a Python bool
         in_roi = roi.contains(pt, maxError=1).getInfo()
         if not in_roi:
             return {"in_roi": False}
 
-        # ✅ คืนค่าที่ "เป็น class" เหมือนที่ใช้ทำกราฟ/แสดงผล
-        out = {}
+        # ✅ รวมทุก layer เป็น image เดียว
+        bands = []
         for lyr in ["luc", "soc", "npp", "ldn"]:
             img = _get_class_image_for_layer(province, lyr, roi)
-            sc = _get_chart_scale(img)
-            fc = img.sample(region=pt, scale=sc, geometries=False)
-            first = fc.first()
-            # ✅ check if feature exists before calling toDictionary
-            size = fc.size().getInfo()
-            out[lyr] = first.toDictionary().getInfo() if size > 0 else None
-        return {"in_roi": True, "values": out}
+            img = img.rename(lyr)
+            bands.append(img)
+
+        combined = ee.Image.cat(bands)
+
+        scale = _get_chart_scale(combined)
+
+        fc = combined.sample(region=pt, scale=scale, geometries=False)
+        size = fc.size().getInfo()
+
+        if size == 0:
+            return {"in_roi": True, "values": None}
+
+        values = fc.first().toDictionary().getInfo()
+
+        return {
+            "in_roi": True,
+            "values": {
+                "luc": {"class": values.get("luc")},
+                "soc": {"class": values.get("soc")},
+                "npp": {"class": values.get("npp")},
+                "ldn": {"class": values.get("ldn")},
+            }
+        }
+
     except Exception as e:
         raise HTTPException(400, str(e))
 

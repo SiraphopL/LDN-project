@@ -497,10 +497,10 @@ async function refresh(shouldZoom = false) {
     const p = provEl.value;
     const l = leftLayerEl.value;
     const r = rightLayerEl.value;
-    
+
     if (shouldZoom) {
-  await zoomToProvince(p);
-}
+      await zoomToProvince(p);
+    }
     await setEeLayer("left", p, l);
     await setEeLayer("right", p, r);
 
@@ -528,6 +528,24 @@ document.getElementById("btnSummary").onclick = async () => {
 provEl.onchange = () => refresh(true);   // เปลี่ยนจังหวัด → zoom
 leftLayerEl.onchange = () => refresh(false);  // เปลี่ยน layer → ไม่ zoom
 rightLayerEl.onchange = () => refresh(false);
+
+// ===== UI Helpers for Mobile Tabs =====
+
+window.switchTab = function (tabId) {
+  const isCharts = tabId === 'charts';
+
+  // Toggle body class for CSS visibility logic
+  document.body.classList.toggle('show-charts', isCharts);
+
+  // Update nav buttons
+  document.getElementById('navMap').classList.toggle('active', !isCharts);
+  document.getElementById('navCharts').classList.toggle('active', isCharts);
+
+  // Force map refresh if switching back to map
+  if (!isCharts) {
+    setTimeout(() => map.invalidateSize(), 100);
+  }
+};
 
 window.addEventListener("resize", () => {
   if (map) map.invalidateSize();

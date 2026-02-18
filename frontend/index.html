@@ -133,19 +133,45 @@
 
   </header>
 
-  <!-- ===== MAP ===== -->
-  <div id="map">
-    <!-- Chart overlays -->
-    <div class="chart-box chart-left">
-      <div class="chart-title" id="leftChartTitle">Left Summary</div>
-      <canvas id="leftChart"></canvas>
-    </div>
+  <!-- ===== MAP & CONTENT ===== -->
+  <main class="main-content">
+    <div id="map">
+      <!-- Chart overlays (Desktop/Tablet) / Full-screen tab content (Mobile) -->
+      <div id="chartsContainer" class="charts-view-container">
+        <div class="chart-box chart-left">
+          <div class="chart-title" id="leftChartTitle">Left Summary</div>
+          <canvas id="leftChart"></canvas>
+        </div>
 
-    <div class="chart-box chart-right">
-      <div class="chart-title" id="rightChartTitle">Right Summary</div>
-      <canvas id="rightChart"></canvas>
+        <div class="chart-box chart-right">
+          <div class="chart-title" id="rightChartTitle">Right Summary</div>
+          <canvas id="rightChart"></canvas>
+        </div>
+      </div>
     </div>
-  </div>
+  </main>
+
+  <!-- Mobile Tab Bar -->
+  <nav class="mobile-nav">
+    <button class="nav-item active" id="navMap" onclick="switchTab('map')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z" />
+        <path d="M8 2v16" />
+        <path d="M16 6v16" />
+      </svg>
+      <span>Map</span>
+    </button>
+    <button class="nav-item" id="navCharts" onclick="switchTab('charts')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="6" y1="20" x2="6" y2="14" />
+      </svg>
+      <span>Report</span>
+    </button>
+  </nav>
 
   <!-- <pre id="out"></pre> -->
 
