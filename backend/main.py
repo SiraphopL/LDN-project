@@ -175,9 +175,22 @@ def _tile_cached(province: str, layer: str):
 def tiles(province: str, layer: str):
     try:
         roi = get_roi(province)
-        # ✅ ใช้ภาพ class ที่ normalize แล้ว เพื่อให้การแสดงผล/กราฟตรงกับฝั่ง GEE
         class_img = _get_class_image_for_layer(province, layer, roi)
         return make_tile_url(class_img, vis_params(layer))
+    except Exception as e:
+        raise HTTPException(400, str(e))
+
+@lru_cache(maxsize=32)
+def _boundary_cached(province: str):
+    """Return province geometry as GeoJSON (cached per province)."""
+    roi = get_roi(province)
+    return roi.getInfo()  # returns a GeoJSON geometry dict
+
+@app.get("/boundary")
+def boundary(province: str):
+    """Return the province boundary as GeoJSON for client-side point-in-polygon checks."""
+    try:
+        return _boundary_cached(province)
     except Exception as e:
         raise HTTPException(400, str(e))
 

@@ -40,6 +40,54 @@ let rightChart = null;
 
 let clickMarker = null; // ✅ marker สำหรับ click popup
 
+// ===== Province boundary cache + point-in-polygon =====
+const boundaryCache = {}; // province → GeoJSON geometry
+
+async function fetchBoundary(province) {
+  if (boundaryCache[province]) return boundaryCache[province];
+  const res = await fetch(`${API}/boundary?province=${encodeURIComponent(province)}`);
+  if (!res.ok) throw new Error("boundary fetch failed");
+  const geom = await res.json();
+  boundaryCache[province] = geom;
+  return geom;
+}
+
+/**
+ * Ray-casting point-in-polygon for GeoJSON geometry.
+ * Supports Polygon and MultiPolygon (ignores holes for simplicity).
+ */
+function pointInGeoJSON(lng, lat, geom) {
+  if (!geom) return false;
+  const rings = geom.type === "Polygon"
+    ? geom.coordinates
+    : geom.type === "MultiPolygon"
+      ? geom.coordinates.flat(1)
+      : [];
+  return rings.some(ring => raycast(lng, lat, ring));
+}
+
+function raycast(x, y, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersect = ((yi > y) !== (yj > y)) &&
+      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// ===== Cursor hint: show 'not-allowed' when hovering outside province =====
+map.on("mousemove", (e) => {
+  const geom = boundaryCache[provEl.value];
+  if (!geom) return;
+  const inside = pointInGeoJSON(e.latlng.lng, e.latlng.lat, geom);
+  map.getContainer().style.cursor = inside ? "" : "not-allowed";
+});
+map.on("mouseout", () => { map.getContainer().style.cursor = ""; });
+
+
 // ===== Class label helpers =====
 const IND_CLASS_LABEL = { 1: "Degraded", 2: "Improved", 3: "Stable" };
 const LDN_CLASS_LABEL = { 0: "Stable", 1: "Improved", 2: "Slightly degraded", 3: "Moderately degraded", 4: "Severely degraded" };
@@ -136,10 +184,17 @@ function buildPopupHTML(lat, lng, data) {
     </div>`;
 }
 
-// ✅ Map click → query /sample → show popup
+// ✅ Map click → guard with client-side boundary check → query /sample → show popup
 map.on("click", async (e) => {
   const { lat, lng } = e.latlng;
   const province = provEl.value;
+
+  // ── Client-side boundary check (instant, no round-trip) ──
+  const geom = boundaryCache[province];
+  if (geom && !pointInGeoJSON(lng, lat, geom)) {
+    // Silently ignore clicks outside the province
+    return;
+  }
 
   // Remove previous marker
   if (clickMarker) { map.removeLayer(clickMarker); clickMarker = null; }
@@ -158,15 +213,14 @@ map.on("click", async (e) => {
 
     if (!res.ok) throw new Error(data?.detail || "sample error");
 
-    let html;
+    // Server-side double-check (edge case: boundary cache slightly differs from EE)
     if (!data.in_roi) {
-      html = `<div class="pi-popup"><div class="pi-header">📍 Outside ROI</div>
-        <div style="padding:6px 10px;font-size:12px;color:#888">This point is outside the selected province boundary.</div></div>`;
-    } else {
-      html = buildPopupHTML(lat, lng, data);
+      map.removeLayer(clickMarker);
+      clickMarker = null;
+      return;
     }
 
-    clickMarker.setPopupContent(html);
+    clickMarker.setPopupContent(buildPopupHTML(lat, lng, data));
     clickMarker.openPopup();
   } catch (err) {
     clickMarker.setPopupContent(
@@ -493,6 +547,10 @@ async function refresh() {
 
     refreshSideBySideControl();
     await refreshCharts();
+
+    // ✅ Pre-fetch boundary for client-side point-in-polygon (also clears old marker)
+    if (clickMarker) { map.removeLayer(clickMarker); clickMarker = null; }
+    fetchBoundary(p).catch(err => console.warn("boundary fetch failed:", err));
 
     outEl.textContent = `Loaded: ${p} | left=${l} | right=${r}`;
   } catch (e) {
