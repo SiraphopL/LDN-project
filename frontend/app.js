@@ -262,6 +262,7 @@ const PALETTE_3 = {
   stable: "#fdd835",
 };
 
+
 function buildLegendHTML(layer) {
   const l = String(layer).toLowerCase();
   let html = "";
@@ -355,6 +356,15 @@ function upsertBarChart(canvasId, chartRef, labels, values, title, layer) {
     return isLdn5 ? (PALETTE_LDN_5[k] || '#9e9e9e') : (PALETTE_3[k] || '#9e9e9e');
   };
 
+  // Create gradient fills for bars
+  const makeGradient = (ctx, chartArea, baseColor) => {
+    if (!chartArea) return baseColor;
+    const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+    gradient.addColorStop(0, baseColor + 'cc');
+    gradient.addColorStop(1, baseColor);
+    return gradient;
+  };
+
   const cfg = {
     type: "bar",
     data: {
@@ -363,27 +373,31 @@ function upsertBarChart(canvasId, chartRef, labels, values, title, layer) {
         label: title,
         data: values,
 
-        backgroundColor: (ctx) => colorAt(ctx.dataIndex),
+        backgroundColor: (ctx) => {
+          const chart = ctx.chart;
+          const { chartArea } = chart;
+          return makeGradient(chart.ctx, chartArea, colorAt(ctx.dataIndex));
+        },
         borderColor: (ctx) => colorAt(ctx.dataIndex),
-        borderWidth: 1,
+        borderWidth: 0,
 
-        // ✅ ทำให้แท่ง “อ้วนขึ้น”
-        barThickness: 35,        // ลอง 45–80 ตามที่ชอบ
-        maxBarThickness: 70,
-        categoryPercentage: 0.9, // กินพื้นที่ของแต่ละหมวดหมู่
-        barPercentage: 0.95,     // กินพื้นที่ภายในหมวดหมู่
-
-        // ✅ ทำให้ดูสวยขึ้น (ไม่จำเป็น แต่ช่วย)
-        // borderRadius: 6,
+        barThickness: 'flex',
+        maxBarThickness: 60,
+        categoryPercentage: 0.75,
+        barPercentage: 0.85,
+        borderRadius: 6,
         borderSkipped: false,
       }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: {
+        duration: 800,
+        easing: 'easeOutQuart',
+      },
 
-      // ✅ เผื่อขอบ chart area เล็กน้อย (ช่วยให้ดูไม่แบน)
-      layout: { padding: { left: 8, right: 8, top: 6, bottom: 6 } },
+      layout: { padding: { left: 4, right: 4, top: 8, bottom: 4 } },
 
       plugins: {
         legend: {
@@ -414,10 +428,21 @@ function upsertBarChart(canvasId, chartRef, labels, values, title, layer) {
           onClick: () => { }
         },
         tooltip: {
+          backgroundColor: 'rgba(17, 24, 39, 0.92)',
+          titleFont: { size: 12, weight: '600', family: 'Inter' },
+          bodyFont: { size: 12, family: 'Inter' },
+          padding: { top: 8, bottom: 8, left: 12, right: 12 },
+          cornerRadius: 8,
+          displayColors: true,
+          boxWidth: 10,
+          boxHeight: 10,
+          boxPadding: 4,
+          usePointStyle: true,
           callbacks: {
+            title: (items) => items[0]?.label || '',
             label: (ctx) => {
               const v = Number(ctx.parsed.y || 0);
-              return `${ctx.label}: ${v.toLocaleString(undefined, { maximumFractionDigits: 2 })} rai`;
+              return ` ${v.toLocaleString(undefined, { maximumFractionDigits: 2 })} rai`;
             }
           }
         }
@@ -425,20 +450,34 @@ function upsertBarChart(canvasId, chartRef, labels, values, title, layer) {
 
       scales: {
         x: {
-          // ✅ ช่วยให้แท่งดูเต็มพื้นที่มากขึ้น
           offset: true,
           grid: { display: false },
-          ticks: { autoSkip: false, maxRotation: 25, minRotation: 0 }
+          border: { display: false },
+          ticks: {
+            autoSkip: false,
+            maxRotation: 30,
+            minRotation: 0,
+            font: { size: 11, weight: '500', family: 'Inter' },
+            color: '#6b7280',
+          }
         },
         y: {
           beginAtZero: true,
-          title: { display: true, text: "Area (rai)" },
+          border: { display: false },
+          grid: {
+            color: 'rgba(0, 0, 0, 0.06)',
+            drawTicks: false,
+          },
           ticks: {
+            padding: 8,
+            font: { size: 10, family: 'Inter' },
+            color: '#9ca3af',
             callback: (val) => {
               const n = Number(val);
-              return Number.isFinite(n)
-                ? n.toLocaleString(undefined, { maximumFractionDigits: 2 })
-                : val;
+              if (!Number.isFinite(n)) return val;
+              if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+              if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+              return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
             }
           }
         }
@@ -454,6 +493,7 @@ function upsertBarChart(canvasId, chartRef, labels, values, title, layer) {
   }
   return new Chart(canvas, cfg);
 }
+
 
 async function refreshCharts() {
   const p = provEl.value;
