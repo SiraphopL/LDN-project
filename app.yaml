@@ -1,0 +1,29 @@
+runtime: python311
+entrypoint: gunicorn -b :$PORT app:app
+
+# ใช้ instance_class F1 ซึ่งรวมอยู่ในโควตาฟรี
+instance_class: F1
+
+automatic_scaling:
+  # ปรับเป็น 0 เพื่อให้เครื่องหยุดทำงานเมื่อไม่มีคนใช้งาน (Scale to zero)
+  min_idle_instances: 0
+  # จำกัดเครื่องไว้ที่ 1 เครื่องเท่านั้น เพื่อไม่ให้เปิดซ้อนกันจนเกินโควตาชั่วโมงฟรี
+  max_idle_instances: 1
+  max_instances: 1
+  
+  # ค่าหน่วงเวลา (Latency) ปรับให้เครื่องไม่ต้องรีบเปิดใหม่บ่อยเกินไป
+  min_pending_latency: 3000ms 
+  max_pending_latency: automatic
+  max_concurrent_requests: 50
+
+env_variables:
+  PYTHONUNBUFFERED: 'true'
+
+handlers:
+  - url: /static
+    static_dir: static
+    secure: always
+    
+  - url: /.*
+    script: auto
+    secure: always

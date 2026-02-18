@@ -1,0 +1,149 @@
+:root {
+  --topbar-h: 50px;
+}
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
+
+.topbar {
+  height: var(--topbar-h);
+  box-sizing: border-box;
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ✅ สำคัญ: map ต้องมี position เพื่อให้ overlay + sbs divider วางถูก */
+#map {
+  height: calc(100vh - var(--topbar-h));
+  position: relative;
+}
+
+#out {
+  margin: 0;
+  padding: 8px;
+  height: 120px;
+  overflow: auto;
+  border-top: 1px solid #ddd;
+}
+
+/* ===== Chart overlays (ซ้าย/ขวา) ===== */
+.chart-box {
+  position: absolute;
+  bottom: 14px;
+  width: 360px;
+  height: 230px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  z-index: 1200;
+
+  /* ✅ เพิ่ม */
+  overflow: hidden;
+}
+
+.chart-box canvas {
+  width: 100% !important;
+  height: 170px !important; /* จาก 190 → 170 */
+}
+
+.chart-left { left: 14px; }
+.chart-right { right: 14px; }
+
+.chart-title {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+/* ===== Side-by-side divider ให้เห็นชัด ===== */
+.leaflet-sbs-divider {
+  background: rgba(0,0,0,0.35);
+  width: 4px;
+  z-index: 1100;
+}
+
+/* ปรับให้แถบ range อยู่เหนือ layer */
+.leaflet-sbs-range {
+  z-index: 1100;
+}
+
+/* ===== Point-Info Popup ===== */
+.leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  min-width: 230px;
+}
+
+.pi-popup {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 13px;
+  color: #222;
+}
+
+.pi-header {
+  background: #2c3e50;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 12px;
+  letter-spacing: 0.3px;
+}
+
+.pi-table {
+  width: 100%;
+  border-collapse: collapse;
+  padding: 4px 0;
+}
+
+.pi-table tr:hover td {
+  background: #f5f7fa;
+}
+
+.pi-key {
+  padding: 5px 12px 5px 12px;
+  color: #555;
+  font-weight: 600;
+  white-space: nowrap;
+  width: 90px;
+}
+
+.pi-val {
+  padding: 5px 12px 5px 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #1a1a2e;
+}
+
+.pi-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  letter-spacing: 0.2px;
+}
+
+.pi-divider {
+  padding: 4px 12px 2px;
+  font-size: 10px;
+  color: #999;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  background: #f0f2f5;
+  border-top: 1px solid #e8eaed;
+  border-bottom: 1px solid #e8eaed;
+}

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LDN Web (Split + Charts)</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Leaflet Side-by-Side (ถูกไฟล์จริงของแพ็กเกจ) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/layout.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/range.css" />
+
+  <!-- your styles -->
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <select id="province">
+      <option>Chiang Mai</option>
+      <option>Chanthaburi</option>
+      <option>Khon Kaen</option>
+      <option selected>Nakhon Nayok</option>
+      <option>Phatthalung</option>
+      <option>Tak</option>
+    </select>
+
+    <select id="leftLayer">
+      <option value="luc" selected>LUC</option>
+      <option value="soc">SOC</option>
+      <option value="npp">NPP</option>
+    </select>
+
+    <select id="rightLayer">
+      <option value="ldn" selected>LDN (final)</option>
+    </select>
+
+    <button id="btnSummary">Summary</button>
+  </div>
+
+  <div id="map">
+    <!-- ✅ Chart overlays (เหมือนกรอบใน GEE) -->
+    <div class="chart-box chart-left">
+      <div class="chart-title" id="leftChartTitle">Left Summary</div>
+      <canvas id="leftChart"></canvas>
+    </div>
+
+    <div class="chart-box chart-right">
+      <div class="chart-title" id="rightChartTitle">Right Summary</div>
+      <canvas id="rightChart"></canvas>
+    </div>
+  </div>
+
+  <pre id="out"></pre>
+
+  <!-- Chart.js (ต้องมาก่อน app.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Side-by-side plugin -->
+  <script src="https://cdn.jsdelivr.net/gh/digidem/leaflet-side-by-side@gh-pages/leaflet-side-by-side.min.js"></script>
+
+  <!-- your app -->
+  <script src="./app.js?v=colorfix-v3"></script>
+</body>
+</html>
