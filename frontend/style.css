@@ -366,6 +366,10 @@ body {
    MOBILE RESPONSIVE
 =================================================== */
 @media (max-width: 900px) {
+  .btn-legend-header {
+    display: none;
+  }
+
   .topbar {
     padding: 10px 15px;
     flex-wrap: wrap;
@@ -554,4 +558,203 @@ body {
   background: #f0f2f5;
   border-top: 1px solid #e8eaed;
   border-bottom: 1px solid #e8eaed;
+}
+
+/* ===== Map Legend Items ===== */
+.map-legend-title {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: #222;
+  letter-spacing: 0.3px;
+}
+
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  font-size: 12px;
+  color: #374151;
+}
+
+.map-legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.map-legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  margin-right: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+/* ===== Legend Panel ===== */
+.map-legend-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 280px;
+  max-height: calc(100% - 20px);
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  z-index: 1400;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  transform: translateY(-8px) scale(0.97);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s ease;
+}
+
+.map-legend-panel.active {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Panel Header */
+.legend-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #1a2540 0%, #0d1b2e 100%);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.legend-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.legend-close-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.legend-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Legend Sections */
+.legend-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.legend-section:last-child {
+  border-bottom: none;
+}
+
+.legend-section-title {
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-dot-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ===== Header Legend Button (Desktop) ===== */
+.btn-legend-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.btn-legend-header svg {
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.btn-legend-header:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+.btn-legend-header:hover svg {
+  opacity: 1;
+}
+
+.btn-legend-header.legend-active {
+  background: rgba(77, 239, 142, 0.15);
+  border-color: rgba(77, 239, 142, 0.4);
+  color: #4def8e;
+}
+
+/* Mobile: Legend as full-screen tab */
+@media (max-width: 600px) {
+  .map-legend-panel {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1500;
+    background: #f8fafc;
+    overflow-y: auto;
+    transition: none;
+  }
+
+  body.show-legend .map-legend-panel {
+    display: flex;
+  }
+}
+
+@media (max-width: 900px) {
+  .btn-legend-header {
+    display: none;
+  }
 }

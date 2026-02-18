@@ -262,6 +262,56 @@ const PALETTE_3 = {
   stable: "#fdd835",
 };
 
+function buildLegendHTML(layer) {
+  const l = String(layer).toLowerCase();
+  let html = "";
+
+  if (l === "ldn") {
+    html += `<div class="map-legend-title">LDN Classes</div>`;
+    const items = [
+      ["Severely degraded", PALETTE_LDN_5.severe],
+      ["Moderately degraded", PALETTE_LDN_5.moderate],
+      ["Slightly degraded", PALETTE_LDN_5.slight],
+      ["Improved", PALETTE_LDN_5.improved],
+      ["Stable", PALETTE_LDN_5.stable],
+    ];
+
+    items.forEach(([label, color]) => {
+      html += `
+        <div class="map-legend-item">
+          <div class="map-legend-dot" style="background:${color}"></div>
+          <span>${label}</span>
+        </div>`;
+    });
+
+  } else {
+    html += `<div class="map-legend-title">Indicator Classes</div>`;
+    const items = [
+      ["Degraded", PALETTE_3.degraded],
+      ["Improved", PALETTE_3.improved],
+      ["Stable", PALETTE_3.stable],
+    ];
+
+    items.forEach(([label, color]) => {
+      html += `
+        <div class="map-legend-item">
+          <div class="map-legend-dot" style="background:${color}"></div>
+          <span>${label}</span>
+        </div>`;
+    });
+  }
+
+  return html;
+}
+
+function updateBothLegends(leftLayer, rightLayer) {
+  const leftLegend = document.getElementById("mapLegendLeft");
+  const rightLegend = document.getElementById("mapLegendRight");
+
+  if (leftLegend) leftLegend.innerHTML = buildLegendHTML(leftLayer);
+  if (rightLegend) rightLegend.innerHTML = buildLegendHTML(rightLayer);
+}
+
 function normalizeKey(lbl) {
   const s = String(lbl ?? "").trim().toLowerCase();
 
@@ -506,6 +556,7 @@ async function refresh(shouldZoom = false) {
 
     refreshSideBySideControl();
     await refreshCharts();
+    updateBothLegends(l, r);
 
     outEl.textContent = `Loaded: ${p} | left=${l} | right=${r}`;
   } catch (e) {
@@ -532,17 +583,21 @@ rightLayerEl.onchange = () => refresh(false);
 // ===== UI Helpers for Mobile Tabs =====
 
 window.switchTab = function (tabId) {
-  const isCharts = tabId === 'charts';
+  // Clear all tab states
+  document.body.classList.remove('show-charts', 'show-legend');
 
-  // Toggle body class for CSS visibility logic
-  document.body.classList.toggle('show-charts', isCharts);
+  // Set body class
+  if (tabId === 'charts') document.body.classList.add('show-charts');
+  if (tabId === 'legend') document.body.classList.add('show-legend');
 
   // Update nav buttons
-  document.getElementById('navMap').classList.toggle('active', !isCharts);
-  document.getElementById('navCharts').classList.toggle('active', isCharts);
+  document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+  const navId = tabId === 'map' ? 'navMap' : tabId === 'charts' ? 'navCharts' : 'navLegend';
+  const navBtn = document.getElementById(navId);
+  if (navBtn) navBtn.classList.add('active');
 
   // Force map refresh if switching back to map
-  if (!isCharts) {
+  if (tabId === 'map') {
     setTimeout(() => map.invalidateSize(), 100);
   }
 };
@@ -552,3 +607,33 @@ window.addEventListener("resize", () => {
 });
 
 refresh(false);
+
+const legendPanel = document.getElementById("mapLegendPanel");
+const legendToggleDesktop = document.getElementById("legendToggleDesktop");
+
+window.toggleLegend = function () {
+  if (!legendPanel) return;
+  const isActive = legendPanel.classList.toggle("active");
+
+  // Toggle active state on the desktop header button
+  if (legendToggleDesktop) {
+    legendToggleDesktop.classList.toggle("legend-active", isActive);
+  }
+};
+
+if (legendToggleDesktop) {
+  legendToggleDesktop.addEventListener("click", toggleLegend);
+}
+
+// Click outside legend panel to close (desktop)
+document.addEventListener("click", (e) => {
+  if (!legendPanel || !legendPanel.classList.contains("active")) return;
+
+  const clickedInPanel = legendPanel.contains(e.target);
+  const clickedToggle = legendToggleDesktop && legendToggleDesktop.contains(e.target);
+
+  if (!clickedInPanel && !clickedToggle) {
+    legendPanel.classList.remove("active");
+    if (legendToggleDesktop) legendToggleDesktop.classList.remove("legend-active");
+  }
+});
