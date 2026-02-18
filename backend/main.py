@@ -245,6 +245,29 @@ def summary(province: str, layer: str):
     except Exception as e:
         raise HTTPException(400, str(e))
 
+@app.get("/bounds")
+def bounds(province: str):
+    try:
+        roi = get_roi(province)   # ← อันนี้เป็น Geometry อยู่แล้ว
+
+        # ใช้ roi ตรง ๆ ไม่ต้อง .geometry()
+        bbox = roi.bounds().getInfo()
+
+        coords = bbox["coordinates"][0]
+
+        minLon, minLat = coords[0]
+        maxLon, maxLat = coords[2]
+
+        return {
+            "bounds": [
+                [minLat, minLon],
+                [maxLat, maxLon]
+            ]
+        }
+
+    except Exception as e:
+        print("BOUNDS ERROR:", e)
+        raise HTTPException(400, str(e))
 
 if __name__ == "__main__":
     import uvicorn

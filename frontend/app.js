@@ -473,12 +473,34 @@ function refreshSideBySideControl() {
   setTimeout(() => map.invalidateSize(), 0);
 }
 
-async function refresh() {
+async function zoomToProvince(province) {
+  const url = `${API}/bounds?province=${encodeURIComponent(province)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.detail || "bounds error");
+
+  if (data.bounds) {
+    map.fitBounds(data.bounds, {
+      padding: [20, 20],
+      animate: true,
+      duration: 0.8
+    });
+  }
+}
+
+async function refresh(shouldZoom = false) {
   try {
+    if (shouldZoom && clickMarker) {
+      map.removeLayer(clickMarker);
+      clickMarker = null;
+    }
     const p = provEl.value;
     const l = leftLayerEl.value;
     const r = rightLayerEl.value;
-
+    
+    if (shouldZoom) {
+  await zoomToProvince(p);
+}
     await setEeLayer("left", p, l);
     await setEeLayer("right", p, r);
 
@@ -503,12 +525,12 @@ document.getElementById("btnSummary").onclick = async () => {
   }
 };
 
-provEl.onchange = refresh;
-leftLayerEl.onchange = refresh;
-rightLayerEl.onchange = refresh;
+provEl.onchange = () => refresh(true);   // เปลี่ยนจังหวัด → zoom
+leftLayerEl.onchange = () => refresh(false);  // เปลี่ยน layer → ไม่ zoom
+rightLayerEl.onchange = () => refresh(false);
 
 window.addEventListener("resize", () => {
   if (map) map.invalidateSize();
 });
 
-refresh();
+refresh(false);
