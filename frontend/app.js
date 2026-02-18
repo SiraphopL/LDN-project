@@ -123,15 +123,6 @@ function buildPopupHTML(lat, lng, data) {
           <td class="pi-key">LDN (final)</td>
           <td><span class="pi-badge" style="background:${ldnCol}">${ldnLbl}</span></td>
         </tr>
-        <tr><td colspan="2" class="pi-divider">── One-out / All-out ──</td></tr>
-        <tr>
-          <td class="pi-key">One-out</td>
-          <td><span class="pi-badge" style="background:${oneOutCol}">${oneOutStatus}</span></td>
-        </tr>
-        <tr>
-          <td class="pi-key">All-out</td>
-          <td><span class="pi-badge" style="background:${allOutCol}">${allOutStatus}</span></td>
-        </tr>
       </table>
     </div>`;
 }
