@@ -13,10 +13,12 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/range.css" />
 
   <!-- your styles -->
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=dark-v2" />
 </head>
 <body>
   <div class="topbar">
+    <div class="topbar-title">LDN Split Map</div>
+
     <select id="province">
       <option>Chiang Mai</option>
       <option>Chanthaburi</option>
@@ -36,7 +38,7 @@
       <option value="ldn" selected>LDN (final)</option>
     </select>
 
-    <button id="btnSummary">Summary</button>
+    <button id="btnSummary" class="btn-primary">Summary</button>
   </div>
 
   <div id="map">

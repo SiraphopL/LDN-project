@@ -45,11 +45,14 @@ def get_roi(province: str):
     return fc.geometry()
 
 def vis_params(layer: str):
-    # คุณปรับ palette/ช่วง class ให้ตรงของจริงได้ทีหลัง
+    # LDN class range: 0=Stable, 1=Improved, 2=Slightly degraded, 3=Moderately degraded, 4=Severely degraded
+    # Indicator class range: 1=Degraded, 2=Improved, 3=Stable
     if layer in ("luc", "soc", "npp"):
         return {"min": 1, "max": 3, "palette": ["#d7191c", "#1a9641", "#fdd835"]}
     if layer == "ldn":
-        return {"min": 1, "max": 5, "palette": ["#800000", "#ff0000", "#FA8072", "#32cd32", "#4def8e"]}
+        # min=0, max=4 to match _normalize_final_ldn() output (0..4)
+        # palette order: class 0 (Stable) → class 4 (Severely degraded)
+        return {"min": 0, "max": 4, "palette": ["#4def8e", "#32cd32", "#FA8072", "#FF0000", "#800000"]}
     return {}
 
 def make_tile_url(image: ee.Image, vis: dict):

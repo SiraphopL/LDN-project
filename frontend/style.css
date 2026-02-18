@@ -1,5 +1,12 @@
 :root {
-  --topbar-h: 50px;
+  --topbar-h: 56px;
+
+  /* theme */
+  --accent: #ff8a00;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --border: rgba(0, 0, 0, 0.12);
+  --shadow: 0 10px 26px rgba(0, 0, 0, 0.10);
 }
 
 body {
@@ -8,12 +15,70 @@ body {
 }
 
 .topbar {
-  height: var(--topbar-h);
-  box-sizing: border-box;
-  padding: 8px;
+  height: 64px;
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 16px;
+
+  padding: 0 20px;
+
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  color: #fff;
+
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+
+.topbar-title {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  margin-right: 20px;
+  color: #fff;
+}
+
+/* ให้ select / button หน้าตาเดียวกัน */
+.topbar select,
+.topbar button {
+  height: 36px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* ทำ select ให้ดู modern + มีลูกศร */
+.topbar select {
+  height: 38px;
+  border-radius: 12px;
+  padding: 0 12px;
+
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+
+  backdrop-filter: blur(6px);
+}
+
+/* ปุ่ม Summary */
+.btn-primary {
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: none;
+
+  background: #ff8a00;
+  font-weight: 800;
+  color: #fff;
+
+  box-shadow: 0 6px 20px rgba(255,138,0,0.45);
+}
+
+.btn-primary:hover {
+  filter: brightness(0.96);
+  box-shadow: 0 10px 22px rgba(255, 138, 0, 0.34);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
 }
 
 /* ✅ สำคัญ: map ต้องมี position เพื่อให้ overlay + sbs divider วางถูก */

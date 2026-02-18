@@ -11,6 +11,14 @@ const leftLayerEl = document.getElementById("leftLayer");
 const rightLayerEl = document.getElementById("rightLayer");
 const outEl = document.getElementById("out");
 
+// ✅ Fix Leaflet default marker icon broken paths (common with CDN + local server)
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
 const map = L.map("map", { zoomControl: true }).setView([14.25, 101.2], 8);
 
 // base map
@@ -445,6 +453,7 @@ async function setEeLayer(side, province, layer) {
     maxZoom: 19,
     opacity: 0.9,
     pane: side === "left" ? "leftPane" : "rightPane",
+    interactive: false
   });
 
   if (side === "left") {

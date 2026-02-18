@@ -159,8 +159,8 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5500", "http://127.0.0.1:5500"],  # ปรับตามที่คุณรัน frontend
-    allow_credentials=True,
+    allow_origins=["*"],  # allow all origins for local dev
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -186,16 +186,22 @@ def sample(province: str, lon: float, lat: float):
     try:
         roi = get_roi(province)
         pt = ee.Geometry.Point([lon, lat])
-        if not roi.contains(pt):
+
+        # ✅ roi.contains() returns an EE ComputedObject — must call .getInfo() to get a Python bool
+        in_roi = roi.contains(pt, maxError=1).getInfo()
+        if not in_roi:
             return {"in_roi": False}
 
-        # ✅ คืนค่าที่ “เป็น class” เหมือนที่ใช้ทำกราฟ/แสดงผล
+        # ✅ คืนค่าที่ "เป็น class" เหมือนที่ใช้ทำกราฟ/แสดงผล
         out = {}
         for lyr in ["luc", "soc", "npp", "ldn"]:
             img = _get_class_image_for_layer(province, lyr, roi)
             sc = _get_chart_scale(img)
-            v = img.sample(pt, scale=sc).first()
-            out[lyr] = ee.Dictionary(v.toDictionary()).getInfo() if v else None
+            fc = img.sample(region=pt, scale=sc, geometries=False)
+            first = fc.first()
+            # ✅ check if feature exists before calling toDictionary
+            size = fc.size().getInfo()
+            out[lyr] = first.toDictionary().getInfo() if size > 0 else None
         return {"in_roi": True, "values": out}
     except Exception as e:
         raise HTTPException(400, str(e))
