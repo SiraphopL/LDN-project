@@ -19,7 +19,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-const map = L.map("map", { zoomControl: true }).setView([14.25, 101.2], 8);
+const map = L.map("map", { zoomControl: true }).setView([14.25, 101.2], 10);
 
 // base map
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
