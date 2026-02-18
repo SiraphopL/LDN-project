@@ -507,4 +507,8 @@ provEl.onchange = refresh;
 leftLayerEl.onchange = refresh;
 rightLayerEl.onchange = refresh;
 
+window.addEventListener("resize", () => {
+  if (map) map.invalidateSize();
+});
+
 refresh();

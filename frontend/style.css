@@ -15,25 +15,36 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
   font-family: 'Inter', sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
 }
 
 /* ===================================================
    TOPBAR
 =================================================== */
 .topbar {
-  height: var(--topbar-h);
+  flex-shrink: 0;
+  min-height: var(--topbar-h);
   display: flex;
   align-items: center;
-  gap: 0;
   padding: 0 20px;
   background: linear-gradient(135deg, #1a2540 0%, #0d1b2e 60%, #0a1628 100%);
   color: #fff;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
   position: relative;
   z-index: 1300;
+  transition: all 0.3s ease;
 }
 
 /* subtle animated shimmer line at bottom */
@@ -85,6 +96,7 @@ body {
   letter-spacing: 0.3px;
   color: #fff;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .topbar-subtitle {
@@ -129,6 +141,7 @@ body {
   text-transform: uppercase;
   padding-left: 2px;
   user-select: none;
+  white-space: nowrap;
 }
 
 .ctrl-label svg {
@@ -254,56 +267,135 @@ body {
   box-shadow: 0 2px 8px rgba(255, 106, 0, 0.35);
 }
 
-/* ✅ map height uses actual topbar height */
 #map {
-  height: calc(100vh - var(--topbar-h));
+  flex: 1;
+  width: 100%;
   position: relative;
+  background: #eee;
 }
 
-#out {
-  margin: 0;
-  padding: 8px;
-  height: 120px;
-  overflow: auto;
-  border-top: 1px solid #ddd;
-}
 
-/* ===== Chart overlays (ซ้าย/ขวา) ===== */
+
 .chart-box {
   position: absolute;
-  bottom: 14px;
-  width: 360px;
-  height: 230px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
-  padding: 10px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  bottom: 20px;
+  width: 380px;
+  height: 240px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   z-index: 1200;
-
-  /* ✅ เพิ่ม */
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
 .chart-box canvas {
   width: 100% !important;
-  height: 170px !important;
-  /* จาก 190 → 170 */
+  height: 180px !important;
 }
 
 .chart-left {
-  left: 14px;
+  left: 20px;
 }
 
 .chart-right {
-  right: 14px;
+  right: 20px;
 }
 
 .chart-title {
   font-weight: 700;
-  font-size: 12px;
-  margin-bottom: 6px;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+/* ===================================================
+   MOBILE RESPONSIVE
+=================================================== */
+@media (max-width: 900px) {
+  .topbar {
+    padding: 10px 15px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .topbar-subtitle,
+  .topbar-divider,
+  .topbar-spacer {
+    display: none;
+  }
+
+  .topbar-controls {
+    width: 100%;
+    order: 3;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .ctrl-group {
+    flex: 1;
+  }
+
+  .ctrl-select {
+    width: 100%;
+    height: 34px;
+    font-size: 12px;
+  }
+
+  .btn-primary {
+    height: 34px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+  .chart-box {
+    width: calc(50% - 30px);
+    height: 180px;
+    bottom: 15px;
+  }
+
+  .chart-box canvas {
+    height: 120px !important;
+  }
+
+  .chart-left {
+    left: 15px;
+  }
+
+  .chart-right {
+    right: 15px;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .chart-box {
+    width: calc(100% - 30px);
+    left: 15px !important;
+    right: 15px !important;
+    height: 160px;
+  }
+
+  .chart-left {
+    bottom: 185px;
+  }
+
+  .chart-right {
+    bottom: 15px;
+  }
+}
+
 
 /* ===== Side-by-side divider ให้เห็นชัด ===== */
 .leaflet-sbs-divider {
