@@ -1,48 +1,141 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LDN Web (Split + Charts)</title>
+  <title>LDN Dashboard — Land Degradation Neutrality</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-  <!-- Leaflet Side-by-Side (ถูกไฟล์จริงของแพ็กเกจ) -->
+  <!-- Leaflet Side-by-Side -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/layout.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/range.css" />
 
   <!-- your styles -->
-  <link rel="stylesheet" href="./style.css?v=dark-v2" />
+  <link rel="stylesheet" href="./style.css?v=header-v4" />
 </head>
+
 <body>
-  <div class="topbar">
-    <div class="topbar-title">LDN Split Map</div>
 
-    <select id="province">
-      <option>Chiang Mai</option>
-      <option>Chanthaburi</option>
-      <option>Khon Kaen</option>
-      <option selected>Nakhon Nayok</option>
-      <option>Phatthalung</option>
-      <option>Tak</option>
-    </select>
+  <!-- ===== HEADER ===== -->
+  <header class="topbar">
 
-    <select id="leftLayer">
-      <option value="luc" selected>LUC</option>
-      <option value="soc">SOC</option>
-      <option value="npp">NPP</option>
-    </select>
+    <!-- Brand -->
+    <div class="topbar-brand">
+      <div class="topbar-logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="#4def8e" stroke-width="2" />
+          <path d="M2 12 Q6 6 12 12 Q18 18 22 12" stroke="#4def8e" stroke-width="2" fill="none"
+            stroke-linecap="round" />
+          <circle cx="12" cy="12" r="3" fill="#ff8a00" />
+        </svg>
+      </div>
+      <div class="topbar-brand-text">
+        <span class="topbar-title">LDN Dashboard</span>
+        <span class="topbar-subtitle">Land Degradation Neutrality</span>
+      </div>
+    </div>
 
-    <select id="rightLayer">
-      <option value="ldn" selected>LDN (final)</option>
-    </select>
+    <!-- Divider -->
+    <div class="topbar-divider"></div>
 
-    <button id="btnSummary" class="btn-primary">Summary</button>
-  </div>
+    <!-- Controls group -->
+    <div class="topbar-controls">
 
+      <!-- Province -->
+      <div class="ctrl-group">
+        <label class="ctrl-label" for="province">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          Province
+        </label>
+        <select id="province" class="ctrl-select">
+          <option>Chiang Mai</option>
+          <option>Chanthaburi</option>
+          <option>Khon Kaen</option>
+          <option selected>Nakhon Nayok</option>
+          <option>Phatthalung</option>
+          <option>Tak</option>
+        </select>
+      </div>
+
+      <!-- Left Layer -->
+      <div class="ctrl-group">
+        <label class="ctrl-label" for="leftLayer">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+          </svg>
+          Left Layer
+        </label>
+        <div class="ctrl-select-wrap">
+          <span class="ctrl-badge badge-left">L</span>
+          <select id="leftLayer" class="ctrl-select ctrl-select--padded">
+            <option value="luc" selected>LUC</option>
+            <option value="soc">SOC</option>
+            <option value="npp">NPP</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Right Layer -->
+      <div class="ctrl-group">
+        <label class="ctrl-label" for="rightLayer">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+          </svg>
+          Right Layer
+        </label>
+        <div class="ctrl-select-wrap">
+          <span class="ctrl-badge badge-right">R</span>
+          <select id="rightLayer" class="ctrl-select ctrl-select--padded">
+            <option value="ldn" selected>LDN (final)</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Spacer -->
+    <div class="topbar-spacer"></div>
+
+    <!-- Action button -->
+    <button id="btnSummary" class="btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="6" x2="21" y2="6" />
+        <line x1="8" y1="12" x2="21" y2="12" />
+        <line x1="8" y1="18" x2="21" y2="18" />
+        <line x1="3" y1="6" x2="3.01" y2="6" />
+        <line x1="3" y1="12" x2="3.01" y2="12" />
+        <line x1="3" y1="18" x2="3.01" y2="18" />
+      </svg>
+      Summary
+    </button>
+
+  </header>
+
+  <!-- ===== MAP ===== -->
   <div id="map">
-    <!-- ✅ Chart overlays (เหมือนกรอบใน GEE) -->
+    <!-- Chart overlays -->
     <div class="chart-box chart-left">
       <div class="chart-title" id="leftChartTitle">Left Summary</div>
       <canvas id="leftChart"></canvas>
@@ -56,7 +149,7 @@
 
   <pre id="out"></pre>
 
-  <!-- Chart.js (ต้องมาก่อน app.js) -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <!-- Leaflet -->
@@ -66,6 +159,7 @@
   <script src="https://cdn.jsdelivr.net/gh/digidem/leaflet-side-by-side@gh-pages/leaflet-side-by-side.min.js"></script>
 
   <!-- your app -->
-  <script src="./app.js?v=colorfix-v3"></script>
+  <script src="./app.js?v=header-v4"></script>
 </body>
+
 </html>
