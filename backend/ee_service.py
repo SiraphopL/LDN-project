@@ -31,6 +31,9 @@ def get_indicator_image(province: str, layer: str) -> ee.Image:
     asset_id = f"{ASSET_ROOT}{prov}_{LAYER_SUFFIX[layer]}"
     return ee.Image(asset_id)
 
+from functools import lru_cache
+
+@lru_cache(maxsize=32)
 def get_roi(province: str):
     prov_name = province.replace("_", " ").strip()
 
@@ -39,6 +42,7 @@ def get_roi(province: str):
 
     # ถ้าว่างจะได้ error ตอน clip / reduceRegion
     # เลยใส่ข้อความชัด ๆ
+    # (Cached, so this strict check is fine to keep)
     if fc.size().getInfo() == 0:
         raise ValueError(f"Province not found in GAUL_SIMPLIFIED_500m: {prov_name}")
 

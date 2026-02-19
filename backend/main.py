@@ -200,11 +200,7 @@ def sample(province: str, lon: float, lat: float):
         roi = get_roi(province)
         pt = ee.Geometry.Point([lon, lat])
 
-        in_roi = roi.contains(pt, maxError=1).getInfo()
-        if not in_roi:
-            return {"in_roi": False}
-
-        # ✅ รวมทุก layer เป็น image เดียว
+        # Optimize: Combine layers first
         bands = []
         for lyr in ["luc", "soc", "npp", "ldn"]:
             img = _get_class_image_for_layer(province, lyr, roi)
@@ -213,23 +209,43 @@ def sample(province: str, lon: float, lat: float):
 
         combined = ee.Image.cat(bands)
 
-        scale = _get_chart_scale(combined)
+        # Use fixed scale=30 to avoid extra API call
+        scale = 30
 
-        fc = combined.sample(region=pt, scale=scale, geometries=False)
-        size = fc.size().getInfo()
+        # Build computation: Check ROI and get values in one Go
+        is_in_roi = roi.contains(pt, maxError=1)
+        
+        # Use reduceRegion instead of sample for direct dictionary
+        pixel_values = combined.reduceRegion(
+            reducer=ee.Reducer.first(),
+            geometry=pt,
+            scale=scale,
+        )
 
-        if size == 0:
+        # Single API call
+        computed = ee.Dictionary({
+            "in_roi": is_in_roi,
+            "values": pixel_values
+        })
+        
+        data = computed.getInfo()
+
+        if not data.get("in_roi"):
+            return {"in_roi": False}
+
+        raw_values = data.get("values")
+        
+        # If raw_values is None or empty, it means masked (nodata)
+        if not raw_values:
             return {"in_roi": True, "values": None}
-
-        values = fc.first().toDictionary().getInfo()
 
         return {
             "in_roi": True,
             "values": {
-                "luc": {"class": values.get("luc")},
-                "soc": {"class": values.get("soc")},
-                "npp": {"class": values.get("npp")},
-                "ldn": {"class": values.get("ldn")},
+                "luc": {"class": raw_values.get("luc")},
+                "soc": {"class": raw_values.get("soc")},
+                "npp": {"class": raw_values.get("npp")},
+                "ldn": {"class": raw_values.get("ldn")},
             }
         }
 
