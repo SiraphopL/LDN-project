@@ -148,6 +148,40 @@ app.add_middleware(
 )
 
 @lru_cache(maxsize=256)
+def _summary_cached(province: str, layer: str):
+    roi = get_roi(province)
+    class_img = _get_class_image_for_layer(province, layer, roi)
+    scale = ee.Number(CHART_SCALE)
+
+    area_dict = _area_by_class_rai(class_img, roi, scale)
+
+    if layer == "ldn":
+        order_keys = ["4", "3", "2", "1", "0"]
+        labels = [
+            "Severely degraded",
+            "Moderately degraded",
+            "Slightly degraded",
+            "Improved",
+            "Stable",
+        ]
+    else:
+        order_keys = ["1", "2", "3"]
+        labels = ["Degraded", "Improved", "Stable"]
+
+    values_ee = ee.List([
+        _round2(ee.Number(area_dict.get(k, 0))) for k in order_keys
+    ])
+
+    return {
+        "province": province,
+        "layer": layer,
+        "unit": "rai",
+        "labels": labels,
+        "values": values_ee.getInfo(),
+        "raw": area_dict.getInfo(),
+    }
+
+@lru_cache(maxsize=256)
 def _tile_cached(province: str, layer: str):
     roi = get_roi(province)
     class_img = _get_class_image_for_layer(province, layer, roi)
@@ -207,7 +241,7 @@ def summary(province: str, layer: str):
     try:
         roi = get_roi(province)
         class_img = _get_class_image_for_layer(province, layer, roi)
-        scale = _get_chart_scale(class_img)
+        scale = ee.Number(CHART_SCALE)
 
         # ✅ รวมเป็น “พื้นที่ (ไร่)” ตามคลาส เหมือนใน GEE
         area_dict = _area_by_class_rai(class_img, roi, scale)

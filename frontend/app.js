@@ -132,6 +132,25 @@ map.on("click", async (e) => {
   const { lat, lng } = e.latlng;
   const province = provEl.value;
 
+  // ✅ ลบ marker เก่าทันที
+  if (clickMarker) {
+    map.removeLayer(clickMarker);
+    clickMarker = null;
+  }
+
+  // ✅ สร้าง marker ทันที (ไม่รอ fetch)
+  clickMarker = L.marker([lat, lng]).addTo(map);
+
+  // ✅ popup loading ก่อน
+  clickMarker.bindPopup(`
+    <div class="pi-popup">
+      <div class="pi-header">📍 Loading…</div>
+      <div style="padding:6px 10px;font-size:12px;color:#888">
+        Querying GEE…
+      </div>
+    </div>
+  `, { maxWidth: 280 }).openPopup();
+
   try {
     const url = `${API}/sample?province=${encodeURIComponent(province)}&lon=${lng}&lat=${lat}`;
     const res = await fetch(url);
@@ -139,27 +158,36 @@ map.on("click", async (e) => {
 
     if (!res.ok) throw new Error(data?.detail || "sample error");
 
-    // ❌ ถ้าอยู่นอก ROI → ไม่ต้องทำอะไรเลย
+    // ถ้าอยู่นอก ROI
     if (!data.in_roi) {
-      console.log("Clicked outside ROI");
-      return;
+      clickMarker.setPopupContent(`
+        <div class="pi-popup">
+          <div class="pi-header">📍 Outside ROI</div>
+          <div style="padding:6px 10px;font-size:12px;color:#888">
+            This point is outside the selected province boundary.
+          </div>
+        </div>
+      `);
     }
-
-    // ✅ ถ้าอยู่ใน ROI ค่อยลบ marker เก่า
-    if (clickMarker) {
-      map.removeLayer(clickMarker);
-      clickMarker = null;
-    }
-
-    // ✅ ค่อยสร้าง marker
-    clickMarker = L.marker([lat, lng]).addTo(map);
 
     const html = buildPopupHTML(lat, lng, data);
 
-    clickMarker.bindPopup(html, { maxWidth: 280 }).openPopup();
+    // ✅ update popup content แทนการสร้างใหม่
+    clickMarker.setPopupContent(html);
 
   } catch (err) {
     console.error("sample error", err);
+
+    clickMarker.setPopupContent(`
+      <div class="pi-popup">
+        <div class="pi-header" style="background:#c0392b">
+          ⚠ Error
+        </div>
+        <div style="padding:6px 10px;font-size:12px;color:#c0392b">
+          ${err.message}
+        </div>
+      </div>
+    `);
   }
 });
 
@@ -503,8 +531,10 @@ async function refreshCharts() {
     ? `LDN Status - ${p}${PERIOD_SUFFIX}`
     : `${rightLayer.toUpperCase()} - ${p}${PERIOD_SUFFIX}`;
 
-  const leftRaw = await fetchSummary(p, leftLayer);
-  const rightRaw = await fetchSummary(p, rightLayer);
+  const [leftRaw, rightRaw] = await Promise.all([
+    fetchSummary(p, leftLayer),
+    fetchSummary(p, rightLayer)
+  ]);
 
   const left = normalizeSummaryToSeries(leftRaw, leftLayer);
   const right = normalizeSummaryToSeries(rightRaw, rightLayer);
