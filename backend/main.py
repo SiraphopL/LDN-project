@@ -174,10 +174,7 @@ def _tile_cached(province: str, layer: str):
 @app.get("/tiles")
 def tiles(province: str, layer: str):
     try:
-        roi = get_roi(province)
-        # ✅ ใช้ภาพ class ที่ normalize แล้ว เพื่อให้การแสดงผล/กราฟตรงกับฝั่ง GEE
-        class_img = _get_class_image_for_layer(province, layer, roi)
-        return make_tile_url(class_img, vis_params(layer))
+        return _tile_cached(province, layer)
     except Exception as e:
         raise HTTPException(400, str(e))
 

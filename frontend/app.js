@@ -132,16 +132,6 @@ map.on("click", async (e) => {
   const { lat, lng } = e.latlng;
   const province = provEl.value;
 
-  // Remove previous marker
-  if (clickMarker) { map.removeLayer(clickMarker); clickMarker = null; }
-
-  // Show a loading marker immediately
-  clickMarker = L.marker([lat, lng]).addTo(map);
-  clickMarker.bindPopup(
-    `<div class="pi-popup"><div class="pi-header">📍 Loading…</div><div style="padding:6px 10px;font-size:12px;color:#888">Querying GEE…</div></div>`,
-    { maxWidth: 280 }
-  ).openPopup();
-
   try {
     const url = `${API}/sample?province=${encodeURIComponent(province)}&lon=${lng}&lat=${lat}`;
     const res = await fetch(url);
@@ -149,22 +139,26 @@ map.on("click", async (e) => {
 
     if (!res.ok) throw new Error(data?.detail || "sample error");
 
-    let html;
+    // ❌ ถ้าอยู่นอก ROI → ไม่ต้องทำอะไรเลย
     if (!data.in_roi) {
-      html = `<div class="pi-popup"><div class="pi-header">📍 Outside ROI</div>
-        <div style="padding:6px 10px;font-size:12px;color:#888">This point is outside the selected province boundary.</div></div>`;
-    } else {
-      html = buildPopupHTML(lat, lng, data);
+      console.log("Clicked outside ROI");
+      return;
     }
 
-    clickMarker.setPopupContent(html);
-    clickMarker.openPopup();
+    // ✅ ถ้าอยู่ใน ROI ค่อยลบ marker เก่า
+    if (clickMarker) {
+      map.removeLayer(clickMarker);
+      clickMarker = null;
+    }
+
+    // ✅ ค่อยสร้าง marker
+    clickMarker = L.marker([lat, lng]).addTo(map);
+
+    const html = buildPopupHTML(lat, lng, data);
+
+    clickMarker.bindPopup(html, { maxWidth: 280 }).openPopup();
+
   } catch (err) {
-    clickMarker.setPopupContent(
-      `<div class="pi-popup"><div class="pi-header" style="background:#c0392b">⚠ Error</div>
-       <div style="padding:6px 10px;font-size:12px;color:#c0392b">${err.message}</div></div>`
-    );
-    clickMarker.openPopup();
     console.error("sample error", err);
   }
 });
