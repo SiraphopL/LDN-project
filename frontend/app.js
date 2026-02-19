@@ -37,6 +37,9 @@ let sideBySideCtrl = null;
 
 let leftChart = null;
 let rightChart = null;
+let lastProvince = null;
+let lastLeftLayer = null;
+let lastRightLayer = null;
 
 let clickMarker = null; // ✅ marker สำหรับ click popup
 
@@ -524,23 +527,47 @@ async function refreshCharts() {
 
   const leftTitle = document.getElementById("leftChartTitle");
   const rightTitle = document.getElementById("rightChartTitle");
-  if (!leftTitle || !rightTitle) throw new Error("chart title elements not found");
 
   leftTitle.textContent = `${leftLayer.toUpperCase()} - ${p}${PERIOD_SUFFIX}`;
   rightTitle.textContent = (rightLayer === 'ldn')
     ? `LDN Status - ${p}${PERIOD_SUFFIX}`
     : `${rightLayer.toUpperCase()} - ${p}${PERIOD_SUFFIX}`;
 
-  const [leftRaw, rightRaw] = await Promise.all([
-    fetchSummary(p, leftLayer),
-    fetchSummary(p, rightLayer)
-  ]);
+  const provinceChanged = p !== lastProvince;
+  const leftChanged = leftLayer !== lastLeftLayer;
+  const rightChanged = rightLayer !== lastRightLayer;
 
-  const left = normalizeSummaryToSeries(leftRaw, leftLayer);
-  const right = normalizeSummaryToSeries(rightRaw, rightLayer);
+  // ✅ ถ้าเปลี่ยนจังหวัด → โหลดทั้งสองฝั่ง
+  if (provinceChanged) {
+    const [leftRaw, rightRaw] = await Promise.all([
+      fetchSummary(p, leftLayer),
+      fetchSummary(p, rightLayer)
+    ]);
 
-  leftChart = upsertBarChart("leftChart", leftChart, left.labels, left.values, "Area", leftLayer);
-  rightChart = upsertBarChart("rightChart", rightChart, right.labels, right.values, "Area", rightLayer);
+    const left = normalizeSummaryToSeries(leftRaw, leftLayer);
+    const right = normalizeSummaryToSeries(rightRaw, rightLayer);
+
+    leftChart = upsertBarChart("leftChart", leftChart, left.labels, left.values, "Area", leftLayer);
+    rightChart = upsertBarChart("rightChart", rightChart, right.labels, right.values, "Area", rightLayer);
+  }
+  else {
+    // ✅ โหลดเฉพาะฝั่งที่เปลี่ยน
+    if (leftChanged) {
+      const leftRaw = await fetchSummary(p, leftLayer);
+      const left = normalizeSummaryToSeries(leftRaw, leftLayer);
+      leftChart = upsertBarChart("leftChart", leftChart, left.labels, left.values, "Area", leftLayer);
+    }
+
+    if (rightChanged) {
+      const rightRaw = await fetchSummary(p, rightLayer);
+      const right = normalizeSummaryToSeries(rightRaw, rightLayer);
+      rightChart = upsertBarChart("rightChart", rightChart, right.labels, right.values, "Area", rightLayer);
+    }
+  }
+
+  lastProvince = p;
+  lastLeftLayer = leftLayer;
+  lastRightLayer = rightLayer;
 }
 
 async function fetchTileUrl(province, layer) {
