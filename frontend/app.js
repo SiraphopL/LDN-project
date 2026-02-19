@@ -9,7 +9,7 @@ const PERIOD_SUFFIX = " (2018–2025)";
 const provEl = document.getElementById("province");
 const leftLayerEl = document.getElementById("leftLayer");
 const rightLayerEl = document.getElementById("rightLayer");
-const outEl = document.getElementById("out");
+// const outEl = document.getElementById("out");
 
 // ✅ Fix Leaflet default marker icon broken paths (common with CDN + local server)
 delete L.Icon.Default.prototype._getIconUrl;
@@ -656,16 +656,16 @@ async function refresh(shouldZoom = false) {
   }
 }
 
-document.getElementById("btnSummary").onclick = async () => {
-  try {
-    const p = provEl.value;
-    const layer = leftLayerEl.value;
-    const data = await fetchSummary(p, layer);
-    outEl.textContent = JSON.stringify(data, null, 2);
-  } catch (e) {
-    outEl.textContent = "ERROR(summary): " + e.message;
-  }
-};
+// document.getElementById("btnSummary").onclick = async () => {
+//   try {
+//     const p = provEl.value;
+//     const layer = leftLayerEl.value;
+//     const data = await fetchSummary(p, layer);
+//     outEl.textContent = JSON.stringify(data, null, 2);
+//   } catch (e) {
+//     outEl.textContent = "ERROR(summary): " + e.message;
+//   }
+// };
 
 provEl.onchange = () => refresh(true);   // เปลี่ยนจังหวัด → zoom
 leftLayerEl.onchange = () => refresh(false);  // เปลี่ยน layer → ไม่ zoom
