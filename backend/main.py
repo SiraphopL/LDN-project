@@ -15,7 +15,7 @@ from functools import lru_cache
 # =====================
 
 M2_PER_RAI = 1600
-CHART_SCALE = 100  # ให้ใกล้กับฝั่ง GEE ที่ตั้ง CHART_SCALE=100
+CHART_SCALE = 30   # ให้ใกล้กับฝั่ง GEE ที่ตั้ง CHART_SCALE=100
 
 
 def _round2(n: ee.Number) -> ee.Number:
@@ -23,15 +23,8 @@ def _round2(n: ee.Number) -> ee.Number:
 
 
 def _get_chart_scale(img: ee.Image) -> float:
-    """Clamp scale ให้อยู่ช่วง [native .. native*4] เหมือนใน GEE
-
-    หมายเหตุ: ใน Python API บางครั้งการส่ง ee.Number เข้าไปเป็นค่า scale
-    อาจทำให้เกิด type error ได้ จึงประเมินออกมาเป็น float (client-side)"""
-    native = float(img.projection().nominalScale().getInfo() or 30)
-    desired = float(CHART_SCALE)
-    clamped = max(desired, native)
-    clamped = min(clamped, native * 4)
-    return clamped
+    # ใช้ native resolution ของ asset ตรง ๆ
+    return float(img.projection().nominalScale().getInfo() or 30)
 
 
 def _base_mask(img: ee.Image) -> ee.Image:
@@ -117,7 +110,7 @@ def _area_by_class_rai(class_img: ee.Image, roi: ee.Geometry, scale: ee.Number) 
     def _iter(g, acc):
         g = ee.Dictionary(g)
         acc = ee.Dictionary(acc)
-        k = ee.Number(g.get("class")).format()
+        k = ee.Number(g.get("class")).toInt().format()  # ⭐ สำคัญ
         v = ee.Number(g.get("sum"))
         return acc.set(k, v)
 
@@ -125,28 +118,17 @@ def _area_by_class_rai(class_img: ee.Image, roi: ee.Geometry, scale: ee.Number) 
 
 
 def _get_class_image_for_layer(province: str, layer: str, roi: ee.Geometry) -> ee.Image:
-    """คืนภาพ class ที่พร้อมใช้ทั้ง tiles + summary ให้คอนเซ็ปต์ตรงกับฝั่ง GEE"""
     if layer not in {"luc", "soc", "npp", "ldn"}:
         raise ValueError("layer must be one of luc/soc/npp/ldn")
 
-    # ใช้ LDN เป็นตัวอ้างอิง proj/mask เหมือนใน GEE
-    ldn_raw = get_indicator_image(province, "ldn")
-    ldn_cls = _normalize_final_ldn(ldn_raw, roi)
-    ref_proj = ldn_cls.projection()
-    ldn_mask = ldn_cls.mask()
-
-    if layer == "ldn":
-        return ldn_cls
-
     raw = get_indicator_image(province, layer)
 
-    if layer in {"luc", "npp"}:
-        cls = _normalize_indicator_continuous(raw, roi, ref_proj)
-    else:  # soc
-        cls = _normalize_indicator_discrete(raw, roi, ref_proj)
+    # 🔥 ไม่ต้อง normalize ใหม่
+    # 🔥 ไม่ต้อง round
+    # 🔥 ไม่ต้อง rebuild class
+    # 🔥 ใช้ asset ตรง ๆ เหมือนใน GEE
 
-    # ✅ ให้พื้นที่ valid ของ indicator ตรงกับ LDN (เหมือน GEE ที่ updateMask(ldnValidMask))
-    return cls.updateMask(ldn_mask)
+    return raw.clip(roi)
 
 
 @asynccontextmanager
