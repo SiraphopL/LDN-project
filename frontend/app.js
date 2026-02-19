@@ -148,6 +148,13 @@ map.on("click", async (e) => {
 
   // ✅ สร้าง marker ทันที (ไม่รอ fetch)
   clickMarker = L.marker([lat, lng]).addTo(map);
+  const currentZoom = map.getZoom();
+  const targetZoom = currentZoom < 12 ? 12 : currentZoom;
+
+  map.flyTo([lat, lng], targetZoom, {
+    animate: true,
+    duration: 0.6
+  });
 
   // ✅ popup loading ก่อน
   clickMarker.bindPopup(`
