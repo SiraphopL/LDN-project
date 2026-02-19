@@ -791,10 +791,18 @@ body {
   }
 }
 
-/* ===== Prevent map interaction when not on map tab ===== */
+/* ===== Allow scroll only when in charts tab (mobile) ===== */
 @media (max-width: 600px) {
-  body.show-charts #map,
-  body.show-legend #map {
-    pointer-events: none;
+  body.show-charts {
+    overflow: auto;
+  }
+
+  body.show-charts .main-content {
+    overflow: hidden;
+  }
+
+  body.show-charts .charts-view-container {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
