@@ -132,6 +132,11 @@ function buildPopupHTML(lat, lng, data) {
 
 // ✅ Map click → query /sample → show popup
 map.on("click", async (e) => {
+  if (document.body.classList.contains("show-charts") ||
+      document.body.classList.contains("show-legend")) {
+    return;
+  }
+
   const { lat, lng } = e.latlng;
   const province = provEl.value;
 
