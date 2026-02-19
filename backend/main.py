@@ -279,10 +279,24 @@ def summary(province: str, layer: str):
             _round2(ee.Number(area_dict.get(k, 0))) for k in order_keys
         ])
 
+        total_area = (
+            ee.Image.pixelArea()
+            .divide(M2_PER_RAI)
+            .reduceRegion(
+                reducer=ee.Reducer.sum(),
+                geometry=roi,
+                scale=scale,
+                bestEffort=True,
+                maxPixels=1e13,
+            )
+            .get("area")
+        )
+
         return {
             "province": province,
             "layer": layer,
             "unit": "rai",
+            "province_area": _round2(ee.Number(total_area)).getInfo(),
             "labels": labels,
             "values": values_ee.getInfo(),
             # raw เอาไว้ debug ถ้าต้องเทียบกับ GEE

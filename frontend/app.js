@@ -544,6 +544,23 @@ async function refreshCharts() {
       fetchSummary(p, rightLayer)
     ]);
 
+    const leftAreaInfo = document.getElementById("leftAreaInfo");
+    const rightAreaInfo = document.getElementById("rightAreaInfo");
+
+    const provinceArea =
+      leftRaw?.province_area ||
+      rightRaw?.province_area ||
+      null;
+
+    if (provinceArea && leftAreaInfo && rightAreaInfo) {
+      const formatted = Number(provinceArea).toLocaleString(undefined, {
+        maximumFractionDigits: 2,
+      });
+
+      leftAreaInfo.textContent = `Province area: ${formatted} rai`;
+      rightAreaInfo.textContent = `Province area: ${formatted} rai`;
+    }
+
     const left = normalizeSummaryToSeries(leftRaw, leftLayer);
     const right = normalizeSummaryToSeries(rightRaw, rightLayer);
 
@@ -674,22 +691,40 @@ rightLayerEl.onchange = () => refresh(false);
 // ===== UI Helpers for Mobile Tabs =====
 
 window.switchTab = function (tabId) {
-  // Clear all tab states
+  // Clear tab states
   document.body.classList.remove('show-charts', 'show-legend');
 
-  // Set body class
   if (tabId === 'charts') document.body.classList.add('show-charts');
   if (tabId === 'legend') document.body.classList.add('show-legend');
 
-  // Update nav buttons
-  document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-  const navId = tabId === 'map' ? 'navMap' : tabId === 'charts' ? 'navCharts' : 'navLegend';
+  // Update nav active state
+  document.querySelectorAll('.nav-item')
+    .forEach(btn => btn.classList.remove('active'));
+
+  const navId =
+    tabId === 'map' ? 'navMap' :
+    tabId === 'charts' ? 'navCharts' :
+    'navLegend';
+
   const navBtn = document.getElementById(navId);
   if (navBtn) navBtn.classList.add('active');
 
-  // Force map refresh if switching back to map
+  // 🔥 LOCK / UNLOCK LEAFLET MAP PROPERLY
   if (tabId === 'map') {
+    map.dragging.enable();
+    map.touchZoom.enable();
+    map.doubleClickZoom.enable();
+    map.scrollWheelZoom.enable();
+    map.boxZoom.enable();
+    map.keyboard.enable();
     setTimeout(() => map.invalidateSize(), 100);
+  } else {
+    map.dragging.disable();
+    map.touchZoom.disable();
+    map.doubleClickZoom.disable();
+    map.scrollWheelZoom.disable();
+    map.boxZoom.disable();
+    map.keyboard.disable();
   }
 };
 
