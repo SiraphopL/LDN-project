@@ -133,7 +133,7 @@ function buildPopupHTML(lat, lng, data) {
 // ✅ Map click → query /sample → show popup
 map.on("click", async (e) => {
   if (document.body.classList.contains("show-charts") ||
-      document.body.classList.contains("show-legend")) {
+    document.body.classList.contains("show-legend")) {
     return;
   }
 
@@ -264,8 +264,8 @@ function normalizeSummaryToSeries(data, layer) {
   const indMap012 = { "0": "Degraded", "1": "Improved", "2": "Stable" };
   const indMap123 = { "1": "Degraded", "2": "Improved", "3": "Stable" };
 
-  const ldnMap01234 = { "0": "Severe", "1": "Moderate", "2": "Slight", "3": "Improved", "4": "Stable" };
-  const ldnMap12345 = { "1": "Severe", "2": "Moderate", "3": "Slight", "4": "Improved", "5": "Stable" };
+  const ldnMap01234 = { "0": "Stable", "1": "Improved", "2": "Slight", "3": "Moderate", "4": "Severe" };
+  const ldnMap12345 = { "1": "Stable", "2": "Improved", "3": "Slight", "4": "Moderate", "5": "Severe" };
 
   let labelMap = null;
   const allNumeric = keys.every(k => Number.isFinite(Number(k)));
@@ -715,8 +715,8 @@ window.switchTab = function (tabId) {
 
   const navId =
     tabId === 'map' ? 'navMap' :
-    tabId === 'charts' ? 'navCharts' :
-    'navLegend';
+      tabId === 'charts' ? 'navCharts' :
+        'navLegend';
 
   const navBtn = document.getElementById(navId);
   if (navBtn) navBtn.classList.add('active');

@@ -15,7 +15,7 @@ from functools import lru_cache
 # =====================
 
 M2_PER_RAI = 1600
-CHART_SCALE = 30   # ให้ใกล้กับฝั่ง GEE ที่ตั้ง CHART_SCALE=100
+CHART_SCALE = 100   # ให้ตรงกับฝั่ง GEE ที่ตั้ง CHART_SCALE=100
 
 
 def _round2(n: ee.Number) -> ee.Number:
@@ -84,9 +84,10 @@ def _normalize_final_ldn(img: ee.Image, roi: ee.Geometry) -> ee.Image:
 
 def _area_by_class_rai(class_img: ee.Image, roi: ee.Geometry, scale: ee.Number) -> ee.Dictionary:
     """คืน dict: {"0": area_rai, "1": area_rai, ... }"""
-    class_img = ee.Image(class_img).rename("class")
+    # ✅ ปัดค่าให้เป็น integer class ก่อนคำนวณพื้นที่ (กัน error จาก floating point noise)
+    class_img = ee.Image(class_img).round().toInt().rename("class")
 
-    valid = class_img.neq(-1).And(class_img.mask())
+    valid = class_img.mask()
     class_img = class_img.updateMask(valid)
 
     area = (
@@ -110,7 +111,7 @@ def _area_by_class_rai(class_img: ee.Image, roi: ee.Geometry, scale: ee.Number) 
     def _iter(g, acc):
         g = ee.Dictionary(g)
         acc = ee.Dictionary(acc)
-        k = ee.Number(g.get("class")).toInt().format()  # ⭐ สำคัญ
+        k = ee.Number(g.get("class")).toInt().format()
         v = ee.Number(g.get("sum"))
         return acc.set(k, v)
 
@@ -123,12 +124,13 @@ def _get_class_image_for_layer(province: str, layer: str, roi: ee.Geometry) -> e
 
     raw = get_indicator_image(province, layer)
 
-    # 🔥 ไม่ต้อง normalize ใหม่
-    # 🔥 ไม่ต้อง round
-    # 🔥 ไม่ต้อง rebuild class
-    # 🔥 ใช้ asset ตรง ๆ เหมือนใน GEE
+    # ✅ Mask indicator ให้ใช้ขอบเขตเดียวกับ LDN (เพื่อให้พื้นที่รวมตรงกัน)
+    if layer != "ldn":
+        ldn_img = get_indicator_image(province, "ldn")
+        raw = raw.updateMask(ldn_img.mask())
 
     return raw.clip(roi)
+
 
 
 @asynccontextmanager
