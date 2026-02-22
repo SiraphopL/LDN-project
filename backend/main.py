@@ -6,44 +6,24 @@ import ee
 from ee_service import init_ee, get_roi, get_indicator_image, vis_params, make_tile_url
 from functools import lru_cache
 
-# =====================
-# ให้กราฟ “ตรงกับ GEE”
-# - เปลี่ยนจากนับจำนวนพิกเซล -> คำนวณ “พื้นที่ (ไร่)” ด้วย pixelArea
-# - ทำ normalization ให้ LUC/NPP (ค่าต่อเนื่อง) -> 3 class (1/2/3)
-# - mask NoData แบบเดียวกับในสคริปต์ GEE
-# - (สำคัญ) mask indicator ให้ใช้ขอบเขต valid-data ของ LDN ด้วย
-# =====================
-
 M2_PER_RAI = 1600
-CHART_SCALE = 100   # ให้ตรงกับฝั่ง GEE ที่ตั้ง CHART_SCALE=100
+CHART_SCALE = 100
 
 
 def _round2(n: ee.Number) -> ee.Number:
     return ee.Number(n).multiply(100).round().divide(100)
 
 
-def _get_chart_scale(img: ee.Image) -> float:
-    # ใช้ native resolution ของ asset ตรง ๆ
-    return float(img.projection().nominalScale().getInfo() or 30)
-
-
 def _base_mask(img: ee.Image) -> ee.Image:
-    """mask NaN/NoData ที่มักเจอ (-9999, -999, -1)"""
     img = ee.Image(img)
-    # NaN check: x == x
     m = img.eq(img)
     m = m.And(img.neq(-9999)).And(img.neq(-999)).And(img.neq(-1))
     return img.updateMask(m)
 
 
 def _normalize_indicator_continuous(img: ee.Image, roi: ee.Geometry, ref_proj: ee.Projection) -> ee.Image:
-    """สำหรับ LUC/NPP ที่เป็นค่าต่อเนื่อง ~ 1.0–3.0 (อาจมี 1.333, 1.666 ฯลฯ)
-    ปัดเป็น 1/2/3 แล้วเก็บเป็น band ชื่อ 'class'"""
     img = _base_mask(img).clip(roi)
-
-    # กันค่าหลุดช่วงแบบคร่าว ๆ (เหมือน GEE)
     img = img.updateMask(img.gte(0.5).And(img.lte(3.5)))
-
     v = img.round().toInt()
     cls = (
         ee.Image(-1)
@@ -59,7 +39,6 @@ def _normalize_indicator_continuous(img: ee.Image, roi: ee.Geometry, ref_proj: e
 
 
 def _normalize_indicator_discrete(img: ee.Image, roi: ee.Geometry, ref_proj: ee.Projection) -> ee.Image:
-    """สำหรับ SOC ที่เป็น 1/2/3 อยู่แล้ว (แต่เผื่อเป็น float)"""
     img = _base_mask(img).clip(roi)
     v = img.round().toInt()
     cls = (
@@ -76,17 +55,13 @@ def _normalize_indicator_discrete(img: ee.Image, roi: ee.Geometry, ref_proj: ee.
 
 
 def _normalize_final_ldn(img: ee.Image, roi: ee.Geometry) -> ee.Image:
-    """LDN สุดท้าย: 0..4 (0 stable, 1 improved, 2 slight, 3 moderate, 4 severe)"""
     img = _base_mask(img).clip(roi)
-    cls = img.round().toInt().rename("class")
+    cls = img.toInt().rename("class")
     return cls
 
 
 def _area_by_class_rai(class_img: ee.Image, roi: ee.Geometry, scale: ee.Number) -> ee.Dictionary:
-    """คืน dict: {"0": area_rai, "1": area_rai, ... }"""
-    # ✅ ปัดค่าให้เป็น integer class ก่อนคำนวณพื้นที่ (กัน error จาก floating point noise)
-    class_img = ee.Image(class_img).round().toInt().rename("class")
-
+    class_img = ee.Image(class_img).toInt().rename("class")
     valid = class_img.mask()
     class_img = class_img.updateMask(valid)
 
@@ -118,32 +93,72 @@ def _area_by_class_rai(class_img: ee.Image, roi: ee.Geometry, scale: ee.Number) 
     return ee.Dictionary(groups.iterate(_iter, ee.Dictionary({})))
 
 
+def _build_common_mask(province: str, roi: ee.Geometry) -> ee.Image:
+    """
+    ✅ ตรงกับ GEE script บรรทัด 1040-1046:
+    commonMask = luc.mask().and(soc.mask()).and(npp.mask())
+    แต่ละ indicator ผ่าน normalize + mask LDN ก่อน
+    """
+    ldn_raw = get_indicator_image(province, "ldn")
+    ldn_norm = _normalize_final_ldn(ldn_raw, roi)
+    ldn_mask = ldn_norm.mask()
+    ref_proj = ldn_raw.projection()
+
+    luc_raw = get_indicator_image(province, "luc").updateMask(ldn_mask)
+    soc_raw = get_indicator_image(province, "soc").updateMask(ldn_mask)
+    npp_raw = get_indicator_image(province, "npp").updateMask(ldn_mask)
+
+    luc_norm = _normalize_indicator_continuous(luc_raw, roi, ref_proj)
+    soc_norm = _normalize_indicator_discrete(soc_raw, roi, ref_proj)
+    npp_norm = _normalize_indicator_continuous(npp_raw, roi, ref_proj)
+
+    common_mask = (
+        luc_norm.mask()
+        .And(soc_norm.mask())
+        .And(npp_norm.mask())
+        .And(ldn_mask)
+    )
+    return common_mask
+
+
 def _get_class_image_for_layer(province: str, layer: str, roi: ee.Geometry) -> ee.Image:
-    if layer not in {"luc", "soc", "npp", "ldn"}:
-        raise ValueError("layer must be one of luc/soc/npp/ldn")
-
     raw = get_indicator_image(province, layer)
+    ref_proj = raw.projection()
 
-    # ✅ Mask indicator ให้ใช้ขอบเขตเดียวกับ LDN (เพื่อให้พื้นที่รวมตรงกัน)
+    # mask ด้วย LDN ก่อน (เหมือน GEE script บรรทัด 1035-1037)
+    ldn_img = get_indicator_image(province, "ldn")
+    ldn_norm = _normalize_final_ldn(ldn_img, roi)
+    ldn_mask = ldn_norm.mask()
+
     if layer != "ldn":
-        ldn_img = get_indicator_image(province, "ldn")
-        raw = raw.updateMask(ldn_img.mask())
+        raw = raw.updateMask(ldn_mask)
 
-    return raw.clip(roi)
+    if layer in ("luc", "npp"):
+        img = _normalize_indicator_continuous(raw, roi, ref_proj)
+    elif layer == "soc":
+        img = _normalize_indicator_discrete(raw, roi, ref_proj)
+    elif layer == "ldn":
+        img = ldn_norm
 
+    # ✅ ใช้ commonMask เหมือน GEE script บรรทัด 1040-1046
+    # GEE: commonMask = luc.mask().and(soc.mask()).and(npp.mask())
+    # และ ldnStatusWithOutside ถูก mask ด้วย commonMask ผ่าน ldnFromIndicators
+    # แต่สังเกตว่า GEE ใช้ ldnAssetWithOutside (ไม่ใช่ ldnFromIndicators) สำหรับกราฟ
+    # ดังนั้น LDN กราฟขวาใช้ asset ตรงๆ + mask แค่ LDN เอง (ไม่ใช้ commonMask)
+    return img
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_ee()
-    ee.data.setDeadline(60000)  # 60s กันค้างไม่จบ
+    ee.data.setDeadline(60000)
     yield
 
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow all origins for local dev
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -159,13 +174,7 @@ def _summary_cached(province: str, layer: str):
 
     if layer == "ldn":
         order_keys = ["4", "3", "2", "1", "0"]
-        labels = [
-            "Severely degraded",
-            "Moderately degraded",
-            "Slightly degraded",
-            "Improved",
-            "Stable",
-        ]
+        labels = ["Severely degraded", "Moderately degraded", "Slightly degraded", "Improved", "Stable"]
     else:
         order_keys = ["1", "2", "3"]
         labels = ["Degraded", "Improved", "Stable"]
@@ -202,7 +211,6 @@ def sample(province: str, lon: float, lat: float):
         roi = get_roi(province)
         pt = ee.Geometry.Point([lon, lat])
 
-        # Optimize: Combine layers first
         bands = []
         for lyr in ["luc", "soc", "npp", "ldn"]:
             img = _get_class_image_for_layer(province, lyr, roi)
@@ -210,34 +218,27 @@ def sample(province: str, lon: float, lat: float):
             bands.append(img)
 
         combined = ee.Image.cat(bands)
-
-        # Use fixed scale=30 to avoid extra API call
         scale = 30
 
-        # Build computation: Check ROI and get values in one Go
         is_in_roi = roi.contains(pt, maxError=1)
-        
-        # Use reduceRegion instead of sample for direct dictionary
         pixel_values = combined.reduceRegion(
             reducer=ee.Reducer.first(),
             geometry=pt,
             scale=scale,
         )
 
-        # Single API call
         computed = ee.Dictionary({
             "in_roi": is_in_roi,
             "values": pixel_values
         })
-        
+
         data = computed.getInfo()
 
         if not data.get("in_roi"):
             return {"in_roi": False}
 
         raw_values = data.get("values")
-        
-        # If raw_values is None or empty, it means masked (nodata)
+
         if not raw_values:
             return {"in_roi": True, "values": None}
 
@@ -261,18 +262,11 @@ def summary(province: str, layer: str):
         class_img = _get_class_image_for_layer(province, layer, roi)
         scale = ee.Number(CHART_SCALE)
 
-        # ✅ รวมเป็น “พื้นที่ (ไร่)” ตามคลาส เหมือนใน GEE
         area_dict = _area_by_class_rai(class_img, roi, scale)
 
         if layer == "ldn":
             order_keys = ["4", "3", "2", "1", "0"]
-            labels = [
-                "Severely degraded",
-                "Moderately degraded",
-                "Slightly degraded",
-                "Improved",
-                "Stable",
-            ]
+            labels = ["Severely degraded", "Moderately degraded", "Slightly degraded", "Improved", "Stable"]    
         else:
             order_keys = ["1", "2", "3"]
             labels = ["Degraded", "Improved", "Stable"]
@@ -301,7 +295,6 @@ def summary(province: str, layer: str):
             "province_area": _round2(ee.Number(total_area)).getInfo(),
             "labels": labels,
             "values": values_ee.getInfo(),
-            # raw เอาไว้ debug ถ้าต้องเทียบกับ GEE
             "raw": area_dict.getInfo(),
         }
     except Exception as e:
@@ -310,23 +303,17 @@ def summary(province: str, layer: str):
 @app.get("/bounds")
 def bounds(province: str):
     try:
-        roi = get_roi(province)   # ← อันนี้เป็น Geometry อยู่แล้ว
-
-        # ใช้ roi ตรง ๆ ไม่ต้อง .geometry()
+        roi = get_roi(province)
         bbox = roi.bounds().getInfo()
-
         coords = bbox["coordinates"][0]
-
         minLon, minLat = coords[0]
         maxLon, maxLat = coords[2]
-
         return {
             "bounds": [
                 [minLat, minLon],
                 [maxLat, maxLon]
             ]
         }
-
     except Exception as e:
         print("BOUNDS ERROR:", e)
         raise HTTPException(400, str(e))

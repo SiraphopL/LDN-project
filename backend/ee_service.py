@@ -13,21 +13,20 @@ def to_asset_province_name(province: str) -> str:
     return p
 
 def init_ee():
-    # ใช้ token ที่คุณ earthengine authenticate แล้ว
-     ee.Initialize(project="steady-method-477813-p9")
+    ee.Initialize(project="steady-method-477813-p9")
 
 LAYER_SUFFIX = {
     "luc": "luc_ldn",
     "soc": "soc_ldn",
     "npp": "npp_ldn",
-    "ldn": "final_ldn",  # <-- ฝั่งขวา
+    "ldn": "final_ldn",
 }
 
 def get_indicator_image(province: str, layer: str) -> ee.Image:
     if layer not in LAYER_SUFFIX:
         raise ValueError(f"unknown layer: {layer}")
 
-    prov = to_asset_province_name(province)  # เช่น "Chiang Mai" -> "Chiang_Mai"
+    prov = to_asset_province_name(province)
     asset_id = f"{ASSET_ROOT}{prov}_{LAYER_SUFFIX[layer]}"
     return ee.Image(asset_id)
 
@@ -40,22 +39,16 @@ def get_roi(province: str):
     fc = ee.FeatureCollection("FAO/GAUL_SIMPLIFIED_500m/2015/level1") \
         .filter(ee.Filter.eq("ADM1_NAME", prov_name))
 
-    # ถ้าว่างจะได้ error ตอน clip / reduceRegion
-    # เลยใส่ข้อความชัด ๆ
-    # (Cached, so this strict check is fine to keep)
     if fc.size().getInfo() == 0:
         raise ValueError(f"Province not found in GAUL_SIMPLIFIED_500m: {prov_name}")
 
-    return fc.geometry()
+    # ✅ ตรงกับ GEE script: cfg.roi.first().geometry(ROI_MAX_ERROR)
+    return ee.Feature(fc.first()).geometry(5)
 
 def vis_params(layer: str):
-    # LDN class range: 0=Stable, 1=Improved, 2=Slightly degraded, 3=Moderately degraded, 4=Severely degraded
-    # Indicator class range: 1=Degraded, 2=Improved, 3=Stable
     if layer in ("luc", "soc", "npp"):
         return {"min": 1, "max": 3, "palette": ["#d7191c", "#1a9641", "#fdd835"]}
     if layer == "ldn":
-        # min=0, max=4 to match _normalize_final_ldn() output (0..4)
-        # palette order: class 0 (Stable) → class 4 (Severely degraded)
         return {"min": 0, "max": 4, "palette": ["#4def8e", "#32cd32", "#FA8072", "#FF0000", "#800000"]}
     return {}
 
