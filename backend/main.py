@@ -7,7 +7,7 @@ from ee_service import init_ee, get_roi, get_indicator_image, vis_params, make_t
 from functools import lru_cache
 
 M2_PER_RAI = 1600
-CHART_SCALE = 100
+CHART_SCALE = 40
 
 
 def _round2(n: ee.Number) -> ee.Number:
@@ -21,14 +21,36 @@ def _base_mask(img: ee.Image) -> ee.Image:
     return img.updateMask(m)
 
 
-def _normalize_indicator_continuous(img: ee.Image, roi: ee.Geometry, ref_proj: ee.Projection) -> ee.Image:
+def _band_min_max(img: ee.Image, roi: ee.Geometry, scale: ee.Number) -> tuple[ee.Number, ee.Number]:
+    """
+    Compute min/max for the first band so we can auto-detect whether classes are 0-based or 1-based.
+    """
+    img = ee.Image(img)
+    band = ee.String(img.bandNames().get(0))
+    stats = img.reduceRegion(
+        reducer=ee.Reducer.minMax(),
+        geometry=roi,
+        scale=scale,
+        bestEffort=True,
+        tileScale=8,
+        maxPixels=1e13,
+    )
+    vmin = ee.Number(stats.get(band.cat("_min"), 0))
+    vmax = ee.Number(stats.get(band.cat("_max"), 0))
+    return vmin, vmax
+
+
+def _normalize_indicator_continuous(img: ee.Image, roi: ee.Geometry, ref_proj: ee.Projection, zero_based: ee.Number) -> ee.Image:
     img = _base_mask(img).clip(roi)
-    img = img.updateMask(img.gte(0.5).And(img.lte(3.5)))
+    img = img.updateMask(img.gte(-0.5).And(img.lte(3.5)))
     v = img.round().toInt()
+    one_is = ee.Number(ee.Algorithms.If(ee.Number(zero_based).eq(1), 2, 1))
+    two_is = ee.Number(ee.Algorithms.If(ee.Number(zero_based).eq(1), 3, 2))
     cls = (
         ee.Image(-1)
-        .where(v.eq(1), 1)
-        .where(v.eq(2), 2)
+        .where(v.eq(0), 1)
+        .where(v.eq(1), one_is)
+        .where(v.eq(2), two_is)
         .where(v.eq(3), 3)
         .rename("class")
         .toByte()
@@ -38,13 +60,16 @@ def _normalize_indicator_continuous(img: ee.Image, roi: ee.Geometry, ref_proj: e
     return cls
 
 
-def _normalize_indicator_discrete(img: ee.Image, roi: ee.Geometry, ref_proj: ee.Projection) -> ee.Image:
+def _normalize_indicator_discrete(img: ee.Image, roi: ee.Geometry, ref_proj: ee.Projection, zero_based: ee.Number) -> ee.Image:
     img = _base_mask(img).clip(roi)
     v = img.round().toInt()
+    one_is = ee.Number(ee.Algorithms.If(ee.Number(zero_based).eq(1), 2, 1))
+    two_is = ee.Number(ee.Algorithms.If(ee.Number(zero_based).eq(1), 3, 2))
     cls = (
         ee.Image(-1)
-        .where(v.eq(1), 1)
-        .where(v.eq(2), 2)
+        .where(v.eq(0), 1)
+        .where(v.eq(1), one_is)
+        .where(v.eq(2), two_is)
         .where(v.eq(3), 3)
         .rename("class")
         .toByte()
@@ -56,7 +81,10 @@ def _normalize_indicator_discrete(img: ee.Image, roi: ee.Geometry, ref_proj: ee.
 
 def _normalize_final_ldn(img: ee.Image, roi: ee.Geometry) -> ee.Image:
     img = _base_mask(img).clip(roi)
-    cls = img.toInt().rename("class")
+    v = img.toInt()
+    vmin, vmax = _band_min_max(v, roi, ee.Number(CHART_SCALE))
+    one_based = ee.Number(vmin.gte(1).And(vmax.lte(5)))
+    cls = ee.Image(ee.Algorithms.If(one_based.eq(1), v.subtract(1), v)).rename("class")
     return cls
 
 
@@ -108,9 +136,17 @@ def _build_common_mask(province: str, roi: ee.Geometry) -> ee.Image:
     soc_raw = get_indicator_image(province, "soc").updateMask(ldn_mask)
     npp_raw = get_indicator_image(province, "npp").updateMask(ldn_mask)
 
-    luc_norm = _normalize_indicator_continuous(luc_raw, roi, ref_proj)
-    soc_norm = _normalize_indicator_discrete(soc_raw, roi, ref_proj)
-    npp_norm = _normalize_indicator_continuous(npp_raw, roi, ref_proj)
+    luc_min, luc_max = _band_min_max(luc_raw, roi, ee.Number(CHART_SCALE))
+    soc_min, soc_max = _band_min_max(soc_raw, roi, ee.Number(CHART_SCALE))
+    npp_min, npp_max = _band_min_max(npp_raw, roi, ee.Number(CHART_SCALE))
+
+    luc_zero_based = ee.Number(luc_min.lte(0).And(luc_max.lte(2)))
+    soc_zero_based = ee.Number(soc_min.lte(0).And(soc_max.lte(2)))
+    npp_zero_based = ee.Number(npp_min.lte(0).And(npp_max.lte(2)))
+
+    luc_norm = _normalize_indicator_continuous(luc_raw, roi, ref_proj, luc_zero_based)
+    soc_norm = _normalize_indicator_discrete(soc_raw, roi, ref_proj, soc_zero_based)
+    npp_norm = _normalize_indicator_continuous(npp_raw, roi, ref_proj, npp_zero_based)
 
     common_mask = (
         luc_norm.mask()
@@ -134,9 +170,13 @@ def _get_class_image_for_layer(province: str, layer: str, roi: ee.Geometry) -> e
         raw = raw.updateMask(ldn_mask)
 
     if layer in ("luc", "npp"):
-        img = _normalize_indicator_continuous(raw, roi, ref_proj)
+        vmin, vmax = _band_min_max(raw, roi, ee.Number(CHART_SCALE))
+        zero_based = ee.Number(vmin.lte(0).And(vmax.lte(2)))
+        img = _normalize_indicator_continuous(raw, roi, ref_proj, zero_based)
     elif layer == "soc":
-        img = _normalize_indicator_discrete(raw, roi, ref_proj)
+        vmin, vmax = _band_min_max(raw, roi, ee.Number(CHART_SCALE))
+        zero_based = ee.Number(vmin.lte(0).And(vmax.lte(2)))
+        img = _normalize_indicator_discrete(raw, roi, ref_proj, zero_based)
     elif layer == "ldn":
         img = ldn_norm
 
