@@ -492,10 +492,19 @@ function upsertBarChart(canvasId, chartRef, labels, values, title, layer) {
           border: { display: false },
           ticks: {
             autoSkip: false,
-            maxRotation: 30,
+            maxRotation: 0,
             minRotation: 0,
             font: { size: 11, weight: '500', family: 'Inter' },
             color: '#6b7280',
+            callback: function (value) {
+              const label = this.getLabelForValue(value);
+
+              if (label.includes(" ")) {
+                return label.split(" ");   // 👈 ตัดทุกคำเป็นคนละบรรทัด
+              }
+
+              return label;
+            }
           }
         },
         y: {
