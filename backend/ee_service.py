@@ -39,10 +39,6 @@ def get_roi(province: str):
     fc = ee.FeatureCollection("FAO/GAUL_SIMPLIFIED_500m/2015/level1") \
         .filter(ee.Filter.eq("ADM1_NAME", prov_name))
 
-    if fc.size().getInfo() == 0:
-        raise ValueError(f"Province not found in GAUL_SIMPLIFIED_500m: {prov_name}")
-
-    # ✅ ตรงกับ GEE script: cfg.roi.first().geometry(ROI_MAX_ERROR)
     return ee.Feature(fc.first()).geometry(5)
 
 def vis_params(layer: str):

@@ -7,7 +7,7 @@ from ee_service import init_ee, get_roi, get_indicator_image, vis_params, make_t
 from functools import lru_cache
 
 M2_PER_RAI = 1600
-CHART_SCALE = 40
+CHART_SCALE = 30
 
 
 def _round2(n: ee.Number) -> ee.Number:
@@ -19,25 +19,6 @@ def _base_mask(img: ee.Image) -> ee.Image:
     m = img.eq(img)
     m = m.And(img.neq(-9999)).And(img.neq(-999)).And(img.neq(-1))
     return img.updateMask(m)
-
-
-def _band_min_max(img: ee.Image, roi: ee.Geometry, scale: ee.Number) -> tuple[ee.Number, ee.Number]:
-    """
-    Compute min/max for the first band so we can auto-detect whether classes are 0-based or 1-based.
-    """
-    img = ee.Image(img)
-    band = ee.String(img.bandNames().get(0))
-    stats = img.reduceRegion(
-        reducer=ee.Reducer.minMax(),
-        geometry=roi,
-        scale=scale,
-        bestEffort=True,
-        tileScale=8,
-        maxPixels=1e13,
-    )
-    vmin = ee.Number(stats.get(band.cat("_min"), 0))
-    vmax = ee.Number(stats.get(band.cat("_max"), 0))
-    return vmin, vmax
 
 
 def _normalize_indicator_continuous(img: ee.Image, roi: ee.Geometry, ref_proj: ee.Projection, zero_based: ee.Number) -> ee.Image:
@@ -82,9 +63,7 @@ def _normalize_indicator_discrete(img: ee.Image, roi: ee.Geometry, ref_proj: ee.
 def _normalize_final_ldn(img: ee.Image, roi: ee.Geometry) -> ee.Image:
     img = _base_mask(img).clip(roi)
     v = img.toInt()
-    vmin, vmax = _band_min_max(v, roi, ee.Number(CHART_SCALE))
-    one_based = ee.Number(vmin.gte(1).And(vmax.lte(5)))
-    cls = ee.Image(ee.Algorithms.If(one_based.eq(1), v.subtract(1), v)).rename("class")
+    cls = v.rename("class")
     return cls
 
 
@@ -170,13 +149,9 @@ def _get_class_image_for_layer(province: str, layer: str, roi: ee.Geometry) -> e
         raw = raw.updateMask(ldn_mask)
 
     if layer in ("luc", "npp"):
-        vmin, vmax = _band_min_max(raw, roi, ee.Number(CHART_SCALE))
-        zero_based = ee.Number(vmin.lte(0).And(vmax.lte(2)))
-        img = _normalize_indicator_continuous(raw, roi, ref_proj, zero_based)
+        img = _normalize_indicator_continuous(raw, roi, ref_proj, ee.Number(0))
     elif layer == "soc":
-        vmin, vmax = _band_min_max(raw, roi, ee.Number(CHART_SCALE))
-        zero_based = ee.Number(vmin.lte(0).And(vmax.lte(2)))
-        img = _normalize_indicator_discrete(raw, roi, ref_proj, zero_based)
+        img = _normalize_indicator_continuous(raw, roi, ref_proj, ee.Number(0))
     elif layer == "ldn":
         img = ldn_norm
 
@@ -223,20 +198,26 @@ def _summary_cached(province: str, layer: str):
         _round2(ee.Number(area_dict.get(k, 0))) for k in order_keys
     ])
 
+    result = ee.Dictionary({
+        "values": values_ee,
+        "raw": area_dict
+    })
+
+    data = result.getInfo()
+
     return {
         "province": province,
         "layer": layer,
         "unit": "rai",
         "labels": labels,
-        "values": values_ee.getInfo(),
-        "raw": area_dict.getInfo(),
+        "values": data["values"],
+        "raw": data["raw"],
     }
 
 @lru_cache(maxsize=256)
 def _tile_cached(province: str, layer: str):
-    roi = get_roi(province)
-    class_img = _get_class_image_for_layer(province, layer, roi)
-    return make_tile_url(class_img, vis_params(layer))
+    img = get_indicator_image(province, layer)
+    return make_tile_url(img, vis_params(layer))
 
 @app.get("/tiles")
 def tiles(province: str, layer: str):
@@ -298,45 +279,7 @@ def sample(province: str, lon: float, lat: float):
 @app.get("/summary")
 def summary(province: str, layer: str):
     try:
-        roi = get_roi(province)
-        class_img = _get_class_image_for_layer(province, layer, roi)
-        scale = ee.Number(CHART_SCALE)
-
-        area_dict = _area_by_class_rai(class_img, roi, scale)
-
-        if layer == "ldn":
-            order_keys = ["4", "3", "2", "1", "0"]
-            labels = ["Severely degraded", "Moderately degraded", "Slightly degraded", "Improved", "Stable"]    
-        else:
-            order_keys = ["1", "2", "3"]
-            labels = ["Degraded", "Improved", "Stable"]
-
-        values_ee = ee.List([
-            _round2(ee.Number(area_dict.get(k, 0))) for k in order_keys
-        ])
-
-        total_area = (
-            ee.Image.pixelArea()
-            .divide(M2_PER_RAI)
-            .reduceRegion(
-                reducer=ee.Reducer.sum(),
-                geometry=roi,
-                scale=scale,
-                bestEffort=True,
-                maxPixels=1e13,
-            )
-            .get("area")
-        )
-
-        return {
-            "province": province,
-            "layer": layer,
-            "unit": "rai",
-            "province_area": _round2(ee.Number(total_area)).getInfo(),
-            "labels": labels,
-            "values": values_ee.getInfo(),
-            "raw": area_dict.getInfo(),
-        }
+        return _summary_cached(province, layer)
     except Exception as e:
         raise HTTPException(400, str(e))
 
