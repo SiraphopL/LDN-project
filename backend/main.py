@@ -186,6 +186,21 @@ def _summary_cached(province: str, layer: str):
     scale = ee.Number(CHART_SCALE)
 
     area_dict = _area_by_class_rai(class_img, roi, scale)
+    province_area = _round2(
+        ee.Number(
+            ee.Image.pixelArea()
+            .divide(M2_PER_RAI)
+            .reduceRegion(
+                reducer=ee.Reducer.sum(),
+                geometry=roi,
+                scale=scale,
+                bestEffort=True,
+                tileScale=8,
+                maxPixels=1e13,
+            )
+            .get("area")
+        )
+    )
 
     if layer == "ldn":
         order_keys = ["4", "3", "2", "1", "0"]
@@ -200,18 +215,20 @@ def _summary_cached(province: str, layer: str):
 
     result = ee.Dictionary({
         "values": values_ee,
-        "raw": area_dict
+        "raw": area_dict,
+        "province_area": province_area
     })
 
-    data = result.getInfo()
+    data = result.getInfo() 
 
     return {
         "province": province,
         "layer": layer,
         "unit": "rai",
-        "labels": labels,
+        "labels": labels,   
         "values": data["values"],
         "raw": data["raw"],
+        "province_area": data["province_area"],
     }
 
 @lru_cache(maxsize=256)
