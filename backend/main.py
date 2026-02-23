@@ -259,10 +259,18 @@ def sample(province: str, lon: float, lat: float):
         scale = 30
 
         is_in_roi = roi.contains(pt, maxError=1)
-        pixel_values = combined.reduceRegion(
-            reducer=ee.Reducer.first(),
-            geometry=pt,
-            scale=scale,
+        proj = combined.projection()
+
+        feature = combined.sample(
+            region=pt,
+            projection=proj,
+            scale=proj.nominalScale(),
+            numPixels=1,
+            geometries=False
+        ).first()
+
+        pixel_values = ee.Dictionary(
+            ee.Algorithms.If(feature, feature.toDictionary(), None)
         )
 
         computed = ee.Dictionary({
