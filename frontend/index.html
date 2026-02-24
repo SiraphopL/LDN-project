@@ -150,6 +150,10 @@
       <!-- Chart overlays (Desktop/Tablet) / Full-screen tab content (Mobile) -->
       <div id="chartsContainer" class="charts-view-container">
         <div class="chart-box chart-left">
+          <div class="chart-loading">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading chart...</div>
+          </div>
           <div class="chart-title" id="leftChartTitle">Left Summary</div>
           <div class="chart-area-info" id="leftAreaInfo"></div>
           <canvas id="leftChart"></canvas>
@@ -159,6 +163,10 @@
         </div>
 
         <div class="chart-box chart-right">
+          <div class="chart-loading">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading chart...</div>
+          </div>
           <div class="chart-title" id="rightChartTitle">Right Summary</div>
           <div class="chart-area-info" id="rightAreaInfo"></div>
           <canvas id="rightChart"></canvas>

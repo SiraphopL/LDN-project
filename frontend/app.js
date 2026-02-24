@@ -540,72 +540,86 @@ function upsertBarChart(canvasId, chartRef, labels, values, title, layer) {
   return new Chart(canvas, cfg);
 }
 
+function setChartLoading(isLoading) {
+  document.querySelectorAll(".chart-loading").forEach(el => {
+    if (isLoading) {
+      el.classList.remove("hidden");
+    } else {
+      el.classList.add("hidden");
+    }
+  });
+}
 
 async function refreshCharts() {
-  const p = provEl.value;
-  const leftLayer = leftLayerEl.value;
-  const rightLayer = rightLayerEl.value;
+  setChartLoading(true);
+  try {
+    const p = provEl.value;
+    const leftLayer = leftLayerEl.value;
+    const rightLayer = rightLayerEl.value;
 
-  const leftTitle = document.getElementById("leftChartTitle");
-  const rightTitle = document.getElementById("rightChartTitle");
+    const leftTitle = document.getElementById("leftChartTitle");
+    const rightTitle = document.getElementById("rightChartTitle");
 
-  leftTitle.textContent = `${leftLayer.toUpperCase()} - ${p}${PERIOD_SUFFIX}`;
-  rightTitle.textContent = (rightLayer === 'ldn')
-    ? `LDN Status - ${p}${PERIOD_SUFFIX}`
-    : `${rightLayer.toUpperCase()} - ${p}${PERIOD_SUFFIX}`;
+    leftTitle.textContent = `${leftLayer.toUpperCase()} - ${p}${PERIOD_SUFFIX}`;
+    rightTitle.textContent = (rightLayer === 'ldn')
+      ? `LDN Status - ${p}${PERIOD_SUFFIX}`
+      : `${rightLayer.toUpperCase()} - ${p}${PERIOD_SUFFIX}`;
 
-  const provinceChanged = p !== lastProvince;
-  const leftChanged = leftLayer !== lastLeftLayer;
-  const rightChanged = rightLayer !== lastRightLayer;
+    const provinceChanged = p !== lastProvince;
+    const leftChanged = leftLayer !== lastLeftLayer;
+    const rightChanged = rightLayer !== lastRightLayer;
 
-  // ✅ ถ้าเปลี่ยนจังหวัด → โหลดทั้งสองฝั่ง
-  if (provinceChanged) {
-    const [leftRaw, rightRaw] = await Promise.all([
-      fetchSummary(p, leftLayer),
-      fetchSummary(p, rightLayer)
-    ]);
+    // ✅ ถ้าเปลี่ยนจังหวัด → โหลดทั้งสองฝั่ง
+    if (provinceChanged) {
+      const [leftRaw, rightRaw] = await Promise.all([
+        fetchSummary(p, leftLayer),
+        fetchSummary(p, rightLayer)
+      ]);
 
-    const leftAreaInfo = document.getElementById("leftAreaInfo");
-    const rightAreaInfo = document.getElementById("rightAreaInfo");
+      const leftAreaInfo = document.getElementById("leftAreaInfo");
+      const rightAreaInfo = document.getElementById("rightAreaInfo");
 
-    const provinceArea =
-      leftRaw?.province_area ||
-      rightRaw?.province_area ||
-      null;
+      const provinceArea =
+        leftRaw?.province_area ||
+        rightRaw?.province_area ||
+        null;
 
-    if (provinceArea && leftAreaInfo && rightAreaInfo) {
-      const formatted = Number(provinceArea).toLocaleString(undefined, {
-        maximumFractionDigits: 2,
-      });
+      if (provinceArea && leftAreaInfo && rightAreaInfo) {
+        const formatted = Number(provinceArea).toLocaleString(undefined, {
+          maximumFractionDigits: 2,
+        });
 
-      leftAreaInfo.textContent = `Province area: ${formatted} rai`;
-      rightAreaInfo.textContent = `Province area: ${formatted} rai`;
-    }
+        leftAreaInfo.textContent = `Province area: ${formatted} rai`;
+        rightAreaInfo.textContent = `Province area: ${formatted} rai`;
+      }
 
-    const left = normalizeSummaryToSeries(leftRaw, leftLayer);
-    const right = normalizeSummaryToSeries(rightRaw, rightLayer);
-
-    leftChart = upsertBarChart("leftChart", leftChart, left.labels, left.values, "Area", leftLayer);
-    rightChart = upsertBarChart("rightChart", rightChart, right.labels, right.values, "Area", rightLayer);
-  }
-  else {
-    // ✅ โหลดเฉพาะฝั่งที่เปลี่ยน
-    if (leftChanged) {
-      const leftRaw = await fetchSummary(p, leftLayer);
       const left = normalizeSummaryToSeries(leftRaw, leftLayer);
-      leftChart = upsertBarChart("leftChart", leftChart, left.labels, left.values, "Area", leftLayer);
-    }
-
-    if (rightChanged) {
-      const rightRaw = await fetchSummary(p, rightLayer);
       const right = normalizeSummaryToSeries(rightRaw, rightLayer);
+
+      leftChart = upsertBarChart("leftChart", leftChart, left.labels, left.values, "Area", leftLayer);
       rightChart = upsertBarChart("rightChart", rightChart, right.labels, right.values, "Area", rightLayer);
     }
-  }
+    else {
+      // ✅ โหลดเฉพาะฝั่งที่เปลี่ยน
+      if (leftChanged) {
+        const leftRaw = await fetchSummary(p, leftLayer);
+        const left = normalizeSummaryToSeries(leftRaw, leftLayer);
+        leftChart = upsertBarChart("leftChart", leftChart, left.labels, left.values, "Area", leftLayer);
+      }
 
-  lastProvince = p;
-  lastLeftLayer = leftLayer;
-  lastRightLayer = rightLayer;
+      if (rightChanged) {
+        const rightRaw = await fetchSummary(p, rightLayer);
+        const right = normalizeSummaryToSeries(rightRaw, rightLayer);
+        rightChart = upsertBarChart("rightChart", rightChart, right.labels, right.values, "Area", rightLayer);
+      }
+    }
+
+    lastProvince = p;
+    lastLeftLayer = leftLayer;
+    lastRightLayer = rightLayer;
+    } finally {
+    setChartLoading(false);
+  }
 }
 
 async function fetchTileUrl(province, layer) {
